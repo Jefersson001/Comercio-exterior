@@ -4,6 +4,10 @@
         <a href="{{ $this->mscRoute('index') }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Volver a la lista</a>
     </div>
     <form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
+        <div class="mb-6 border-b border-slate-200 bg-slate-50/70 pb-6 dark:border-white/10 dark:bg-slate-950/30">
+            <p class="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Status del embarque</p>
+            <x-msc.status-bar :status="$status" interactive />
+        </div>
         <fieldset wire:loading.attr="disabled" class="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <legend class="sr-only">Información MSC</legend>
             <x-forms.input name="no" label="No." :value="$shipmentId ?? 'Se asignará al guardar'" readonly hint="Numeración automática del sistema." />
@@ -32,9 +36,7 @@
             <div>
                 <label for="units_qty" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Cant Unidades</label>
                 <input id="units_qty" name="units_qty" type="number" wire:model.live="units_qty" min="0" max="2147483647" step="1" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
-                <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Calculado: {{ $unitsPerContainer === null ? 'sin unidades por contenedor configuradas' : $unitsPerContainer.' × '.$container_qty.' contenedores' }}. Se rellena con la capacidad total; puedes reducirlo si el último contenedor va parcial. Al cambiar producto o contenedores, se recalcula.</p>
                 @error('units_qty')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
-                @if($product_id && $unitsPerContainer === null && $units_qty === '')<p class="mt-2 text-sm text-amber-600 dark:text-amber-300">Configura las unidades por contenedor en el producto para calcular este total.</p>@endif
             </div>
             <x-forms.input name="free_time" label="Free time (días) *" type="number" wire:model="free_time" min="0" max="2147483647" step="1" required />
             <div>
@@ -46,7 +48,7 @@
                 @error('vessel_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 @if($vessels->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Carga los buques desde Configuración → Buques.</p>@endif
             </div>
-            <div class="sm:col-span-2 lg:col-span-3"><x-forms.textarea name="released" label="RELEASED" wire:model="released" maxlength="255" /></div>
+            <div class="sm:col-span-2 lg:col-span-3"><x-forms.input name="released" label="RELEASED" wire:model="released" maxlength="255" /></div>
             @if($foreignTrade)
                 <div class="sm:col-span-2 lg:col-span-3">
                     <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>

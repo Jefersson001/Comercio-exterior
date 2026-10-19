@@ -48,6 +48,7 @@ class MscSpreadsheetController extends Controller
                         $shipment->totalUnits() === null ? new StringCell('') : new NumericCell($shipment->totalUnits()),
                         new NumericCell($shipment->free_time),
                         new StringCell($shipment->vessel?->name ?? ''), new StringCell($shipment->released ?? ''),
+                        new StringCell($shipment->status?->value ?? ''),
                     ];
                     if ($foreignTrade) {
                         $cells[] = new StringCell($shipment->category->name ?? '');

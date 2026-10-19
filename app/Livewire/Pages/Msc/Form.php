@@ -48,6 +48,8 @@ class Form extends Component
 
     public string $released = '';
 
+    public string $status = '';
+
     public function boot(): void
     {
         Gate::authorize('manage-msc');
@@ -73,6 +75,7 @@ class Form extends Component
             $this->free_time = (string) $shipment->free_time;
             $this->vessel_id = $shipment->vessel_id;
             $this->released = $shipment->released ?? '';
+            $this->status = $shipment->status?->value ?? '';
         }
         if (! $this->unitsQtyOverridden) {
             $this->recalculateUnitsQty();
@@ -101,10 +104,11 @@ class Form extends Component
     public function save(): void
     {
         Gate::authorize('manage-msc');
-        foreach (['bl_master', 'bl_house', 'released', 'units_qty'] as $field) {
+        foreach (['bl_master', 'bl_house', 'released', 'units_qty', 'status'] as $field) {
             $this->{$field} = trim($this->{$field});
         }
         $data = $this->validate(MscFields::rules($this->shipmentId, $this->foreignTrade, $this->bl_house), attributes: MscFields::labels());
+        $data['status'] = $this->status === '' ? null : $this->status;
         $data['units_qty'] = $this->unitsQtyOverridden ? (int) $this->units_qty : null;
         $unitsPerContainer = Product::query()->whereKey($data['product_id'])->value('units_per_container');
         $capacity = $unitsPerContainer === null ? null : (int) $unitsPerContainer * (int) $data['container_qty'];

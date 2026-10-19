@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\MscShipmentStatus;
 use App\Models\MscShipment;
 use Illuminate\Validation\Rule;
 
@@ -11,6 +12,7 @@ class MscFields
         'no' => 'No.', 'etd' => 'ETD', 'eta' => 'ETA', 'bl_master' => 'BL Master',
         'bl_house' => 'BL House', 'factory' => 'Factory', 'model' => 'Model', 'container_qty' => 'Cant contenedores',
         'units_qty' => 'Cant Unidades', 'free_time' => 'Free time', 'vessel' => 'Buque', 'released' => 'RELEASED',
+        'status' => 'Status',
     ];
 
     /** @return array<string, array<mixed>> */
@@ -28,6 +30,7 @@ class MscFields
             'free_time' => ['required', 'integer', 'min:0', 'max:2147483647'],
             'vessel_id' => ['nullable', 'integer', 'exists:vessels,id'],
             'released' => ['nullable', 'string', 'max:255'],
+            'status' => ['nullable', Rule::enum(MscShipmentStatus::class)],
             ...($foreignTrade ? ['category_id' => ['nullable', 'integer', 'exists:categories,id']] : []),
         ];
     }

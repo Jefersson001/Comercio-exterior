@@ -166,6 +166,21 @@ class MscSpreadsheetTest extends TestCase
         $this->assertDatabaseCount('msc_shipments', 0);
     }
 
+    public function test_import_and_export_support_shipment_status(): void
+    {
+        $row = $this->row('BL-STATUS-IMPORT');
+        $row[12] = 'PUERTO';
+        $upload = $this->upload([$row]);
+        app(ImportMscShipments::class)->handle($upload->getPathname());
+        $shipment = MscShipment::where('bl_master', 'BL-STATUS-IMPORT')->firstOrFail();
+        $this->assertSame('PUERTO', $shipment->status?->value);
+
+        $response = $this->get(route('msc.export'))->assertOk();
+        $rows = $this->read($response->baseResponse->getFile()->getPathname());
+        $this->assertSame('Status', $rows[0][12]);
+        $this->assertSame('PUERTO', $rows[1][12]);
+    }
+
     public function test_original_workbook_layout_titles_notes_totals_and_extra_columns_are_supported(): void
     {
         $headers = ['No.', 'ETD', 'ETA', 'Bill of Lading NO.', 'Destination', 'Shipping line', 'Factory', 'Model', 'Container Qty', 'Free time', 'Ship Agent', 'RELEASED'];

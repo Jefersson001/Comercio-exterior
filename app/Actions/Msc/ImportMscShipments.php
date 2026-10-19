@@ -98,6 +98,7 @@ class ImportMscShipments
                             $freeTime = $matches[1];
                         }
                         $unitsQty = $this->text($raw['units_qty'] ?? null);
+                        $status = $this->text($raw['status'] ?? null);
                         $data = [
                             'etd' => $this->date($raw['etd']), 'eta' => $this->date($raw['eta']),
                             'bl_master' => $blMaster, 'bl_house' => $blHouse,
@@ -105,6 +106,7 @@ class ImportMscShipments
                             'vessel_id' => $vessels[$this->normalize($this->text($raw['vessel']))] ?? null,
                             'product_id' => $productId, 'container_qty' => $this->text($raw['container_qty']),
                             'units_qty' => $unitsQty === '' ? null : $unitsQty,
+                            'status' => $status === '' ? null : $status,
                             'free_time' => $freeTime,
                             'released' => $this->text($raw['released']),
                         ];
@@ -169,7 +171,7 @@ class ImportMscShipments
         }
         $header = [];
         foreach (MscFields::HEADERS as $field => $label) {
-            if (in_array($field, ['no', 'bl_house', 'units_qty'], true)) {
+            if (in_array($field, ['no', 'bl_house', 'units_qty', 'status'], true)) {
                 continue;
             }
             $key = preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii($label)));
@@ -192,6 +194,11 @@ class ImportMscShipments
         $unitsKey = preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii(MscFields::HEADERS['units_qty'])));
         if (isset($columns[$unitsKey])) {
             $header['units_qty'] = $columns[$unitsKey];
+        }
+
+        $statusKey = preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii(MscFields::HEADERS['status'])));
+        if (isset($columns[$statusKey])) {
+            $header['status'] = $columns[$statusKey];
         }
 
         $houseKey = preg_replace('/[^a-z0-9]/', '', Str::lower(Str::ascii(MscFields::HEADERS['bl_house'])));

@@ -116,12 +116,12 @@ class MscCategoryContextTest extends TestCase
         foreach (['template', 'export'] as $action) {
             $international = $this->downloadRows('msc.'.$action);
             $exterior = $this->downloadRows('foreign-trade.msc.'.$action);
-            $this->assertCount(12, $international[0]);
-            $this->assertCount(13, $exterior[0]);
-            $this->assertSame('Categoría', $exterior[0][12]);
+            $this->assertCount(13, $international[0]);
+            $this->assertCount(14, $exterior[0]);
+            $this->assertSame('Categoría', $exterior[0][13]);
             if ($action === 'export') {
-                $this->assertSame('Spare parts', $exterior[1][12]);
-                $this->assertCount(12, $international[1]);
+                $this->assertSame('Spare parts', $exterior[1][13]);
+                $this->assertCount(13, $international[1]);
             }
         }
     }
@@ -132,7 +132,7 @@ class MscCategoryContextTest extends TestCase
         $writer = new Writer;
         $writer->openToFile($path);
         $writer->addRow(Row::fromValues(array_values(MscFields::headers(true))));
-        $writer->addRow(Row::fromValues([99, '2026-10-01', '2026-11-01', $bill, '', 'Factory', 'Model One', 1, '', 21, 'Agent', '', $category]));
+        $writer->addRow(Row::fromValues([99, '2026-10-01', '2026-11-01', $bill, '', 'Factory', 'Model One', 1, '', 21, 'Agent', '', '', $category]));
         $writer->close();
         $file = UploadedFile::fake()->createWithContent('msc.xlsx', file_get_contents($path));
         unlink($path);

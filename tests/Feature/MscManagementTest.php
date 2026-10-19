@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Pages\Configuration\Products\Form as ProductForm;
 use App\Livewire\Pages\Msc\Form;
 use App\Livewire\Pages\Msc\Index;
+use App\Enums\MscShipmentStatus;
 use App\Models\MscShipment;
 use App\Models\Factory;
 use App\Models\Product;
@@ -146,6 +147,48 @@ class MscManagementTest extends TestCase
 
         $this->assertSame(1, $shipment->fresh()->container_qty);
         $this->assertSame(48, $shipment->fresh()->totalUnits());
+    }
+
+    public function test_shipment_status_can_be_set_changed_and_cleared_by_msc_users(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $shipment = MscShipment::factory()->create(['status' => null]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->assertSet('status', '')
+            ->set('status', MscShipmentStatus::Puerto->value)
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame(MscShipmentStatus::Puerto, $shipment->fresh()->status);
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->set('status', MscShipmentStatus::Reconocimiento->value)
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame(MscShipmentStatus::Reconocimiento, $shipment->fresh()->status);
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->set('status', 'INVALIDO')
+            ->call('save')
+            ->assertHasErrors('status');
+        $this->assertSame(MscShipmentStatus::Reconocimiento, $shipment->fresh()->status);
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->set('status', '')
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertNull($shipment->fresh()->status);
+    }
+
+    public function test_shipment_status_bar_is_visible_in_list_and_edit_form(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $shipment = MscShipment::factory()->create(['status' => MscShipmentStatus::Navegando]);
+
+        $this->get(route('msc.index'))->assertOk()->assertSee('NAVEGANDO')->assertSee('RECONOCIMIENTO');
+        $this->get(route('msc.edit', $shipment))->assertOk()
+            ->assertSeeInOrder(['Status del embarque', 'IN BOND', 'NAVEGANDO', 'RECONOCIMIENTO', 'No.'])
+            ->assertSee('NAVEGANDO');
     }
 
     public function test_form_validates_dates_product_and_integer_fields(): void

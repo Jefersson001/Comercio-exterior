@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MscShipmentStatus;
 use Database\Factories\MscShipmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -22,8 +23,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $vessel_id
  * @property-read Vessel|null $vessel
  * @property int|null $units_qty
+ * @property MscShipmentStatus|null $status
  */
-#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released'])]
+#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status'])]
 class MscShipment extends Model
 {
     /** @use HasFactory<MscShipmentFactory> */
@@ -35,7 +37,7 @@ class MscShipment extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['etd' => 'date', 'eta' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer'];
+        return ['etd' => 'date', 'eta' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'status' => MscShipmentStatus::class];
     }
 
     /** @return BelongsTo<Product, $this> */
