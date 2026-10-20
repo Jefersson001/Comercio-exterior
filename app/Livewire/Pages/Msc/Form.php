@@ -100,6 +100,24 @@ class Form extends Component
 
     public string $return_date = '';
 
+    public string $original_docs_receipt_date = '';
+
+    public string $aa_instructions_sent_date = '';
+
+    public string $bl_release_date = '';
+
+    public string $sencamer_request_date = '';
+
+    public string $sencamer_receipt_date = '';
+
+    public string $comex_request_date = '';
+
+    public string $comex_receipt_date = '';
+
+    public string $customs_agent_status = '';
+
+    public string $customs_agent_observation = '';
+
     /** @var array<int, array{name: string}> */
     public array $containerLines = [];
 
@@ -144,6 +162,15 @@ class Form extends Component
                 $this->plant_receipt_date = $shipment->plant_receipt_date?->format('Y-m-d') ?? '';
                 $this->location = $shipment->location ?? '';
                 $this->return_date = $shipment->return_date?->format('Y-m-d') ?? '';
+                $this->original_docs_receipt_date = $shipment->original_docs_receipt_date?->format('Y-m-d') ?? '';
+                $this->aa_instructions_sent_date = $shipment->aa_instructions_sent_date?->format('Y-m-d') ?? '';
+                $this->bl_release_date = $shipment->bl_release_date?->format('Y-m-d') ?? '';
+                $this->sencamer_request_date = $shipment->sencamer_request_date?->format('Y-m-d') ?? '';
+                $this->sencamer_receipt_date = $shipment->sencamer_receipt_date?->format('Y-m-d') ?? '';
+                $this->comex_request_date = $shipment->comex_request_date?->format('Y-m-d') ?? '';
+                $this->comex_receipt_date = $shipment->comex_receipt_date?->format('Y-m-d') ?? '';
+                $this->customs_agent_status = $shipment->customs_agent_status ?? '';
+                $this->customs_agent_observation = $shipment->customs_agent_observation ?? '';
                 $this->containerLines = $shipment->containers
                     ->map(fn (MscShipmentContainer $container): array => ['name' => $container->name])
                     ->values()
@@ -183,7 +210,7 @@ class Form extends Component
 
     public function selectForeignTradeTab(string $tab): void
     {
-        abort_unless(in_array($tab, ['phase-1', 'phase-2', 'phase-3', 'phase-4', 'notes'], true), 404);
+        abort_unless(in_array($tab, ['phase-1', 'phase-2', 'phase-3', 'notes'], true), 404);
 
         $this->activeForeignTradeTab = $tab;
     }
@@ -217,7 +244,7 @@ class Form extends Component
             foreach (['recognition_date', 'receipt_date'] as $field) {
                 $this->{$field} = trim($this->{$field});
             }
-            foreach (['shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date', 'registration_date', 'phase_two_recognition_date', 'validation_date', 'plant_receipt_date', 'location', 'return_date'] as $field) {
+            foreach (['shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date', 'registration_date', 'phase_two_recognition_date', 'validation_date', 'plant_receipt_date', 'location', 'return_date', 'original_docs_receipt_date', 'aa_instructions_sent_date', 'bl_release_date', 'sencamer_request_date', 'sencamer_receipt_date', 'comex_request_date', 'comex_receipt_date', 'customs_agent_status', 'customs_agent_observation'] as $field) {
                 $this->{$field} = trim($this->{$field});
             }
             foreach ($this->containerLines as $index => $line) {

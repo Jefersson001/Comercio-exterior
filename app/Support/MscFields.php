@@ -2,8 +2,8 @@
 
 namespace App\Support;
 
-use App\Enums\MscShipmentStatus;
 use App\Enums\MscBillOfLadingStatus;
+use App\Enums\MscShipmentStatus;
 use App\Models\MscShipment;
 use Illuminate\Validation\Rule;
 
@@ -56,6 +56,15 @@ class MscFields
                 'plant_receipt_date' => ['nullable', 'date_format:Y-m-d'],
                 'location' => ['nullable', 'string', 'max:255'],
                 'return_date' => ['nullable', 'date_format:Y-m-d'],
+                'original_docs_receipt_date' => ['nullable', 'date_format:Y-m-d'],
+                'aa_instructions_sent_date' => ['nullable', 'date_format:Y-m-d'],
+                'bl_release_date' => ['nullable', 'date_format:Y-m-d'],
+                'sencamer_request_date' => ['nullable', 'date_format:Y-m-d'],
+                'sencamer_receipt_date' => ['nullable', 'date_format:Y-m-d'],
+                'comex_request_date' => ['nullable', 'date_format:Y-m-d'],
+                'comex_receipt_date' => ['nullable', 'date_format:Y-m-d'],
+                'customs_agent_status' => ['nullable', 'string', 'max:10000'],
+                'customs_agent_observation' => ['nullable', 'string', 'max:10000'],
             ] : []),
             ...($foreignTrade ? ['category_id' => ['nullable', 'integer', 'exists:categories,id']] : []),
         ];
@@ -94,6 +103,15 @@ class MscFields
             'plant_receipt_date' => 'Recepción planta',
             'location' => 'Ubicación',
             'return_date' => 'Devolución',
+            'original_docs_receipt_date' => 'Fecha recep de doc orig',
+            'aa_instructions_sent_date' => 'Fecha instrucciones enviadas AA',
+            'bl_release_date' => 'Fecha liberación BL',
+            'sencamer_request_date' => 'Fecha de solicitud de SENCAMER',
+            'sencamer_receipt_date' => 'Fecha recepción de SENCAMER',
+            'comex_request_date' => 'Fecha solicitud de COMEX',
+            'comex_receipt_date' => 'Fecha recepción de COMEX',
+            'customs_agent_status' => 'Status agente de aduana',
+            'customs_agent_observation' => 'Observación agente de aduana',
             'containerLines.*.name' => 'Contenedor',
             ...self::HEADERS,
         ];

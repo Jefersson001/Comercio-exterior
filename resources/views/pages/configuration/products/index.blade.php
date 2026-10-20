@@ -26,16 +26,25 @@
         </div>
         <div class="overflow-x-auto" wire:loading.class="opacity-60">
             <table class="w-full text-left">
-                <thead class="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase dark:bg-slate-950/40 dark:text-slate-400"><tr><th scope="col" class="px-6 py-4 font-semibold">Nombre</th><th scope="col" class="px-6 py-4 font-semibold">Unidades por contenedor</th><th scope="col" class="w-28 px-6 py-4 font-semibold">Acciones</th></tr></thead>
+                <thead class="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase dark:bg-slate-950/40 dark:text-slate-400"><tr><th scope="col" class="px-6 py-4 font-semibold">Nombre</th><th scope="col" class="px-6 py-4 font-semibold">Unidades por contenedor</th><th scope="col" class="px-6 py-4 font-semibold">Variantes</th><th scope="col" class="w-28 px-6 py-4 font-semibold">Acciones</th></tr></thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-white/5">
                     @forelse ($products as $product)
                         <tr wire:key="product-{{ $product->id }}" data-clickable-row data-href="{{ route('configuration.products.edit', $product) }}" tabindex="0" aria-label="Editar {{ $product->name }}" class="cursor-pointer transition hover:bg-indigo-50/60 focus:bg-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/5 dark:focus:bg-indigo-500/5">
                             <td class="px-6 py-4"><a href="{{ route('configuration.products.edit', $product) }}" class="font-semibold hover:text-indigo-600 hover:underline dark:hover:text-indigo-300">{{ $product->name }}</a></td>
                             <td class="px-6 py-4">{{ $product->units_per_container ?? '—' }}</td>
+                            <td class="px-6 py-4">
+                                @forelse($product->variants as $variant)
+                                    <span class="mr-2 inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2 py-1 text-xs text-slate-700 dark:bg-white/10 dark:text-slate-300">
+                                        {{ $variant->color }}
+                                    </span>
+                                @empty
+                                    <span class="text-slate-400">Sin variantes</span>
+                                @endforelse
+                            </td>
                             <td class="px-6 py-4"><a href="{{ route('configuration.products.edit', $product) }}" aria-label="Editar {{ $product->name }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/10">Editar</a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="3" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron productos</p><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Prueba con otra búsqueda o crea un producto.</p></td></tr>
+                        <tr><td colspan="4" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron productos</p><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Prueba con otra búsqueda o crea un producto.</p></td></tr>
                     @endforelse
                 </tbody>
             </table>

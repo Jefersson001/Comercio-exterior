@@ -39,8 +39,15 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $validation_date
  * @property Carbon|null $plant_receipt_date
  * @property Carbon|null $return_date
+ * @property Carbon|null $original_docs_receipt_date
+ * @property Carbon|null $aa_instructions_sent_date
+ * @property Carbon|null $bl_release_date
+ * @property Carbon|null $sencamer_request_date
+ * @property Carbon|null $sencamer_receipt_date
+ * @property Carbon|null $comex_request_date
+ * @property Carbon|null $comex_receipt_date
  */
-#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status', 'status_bl', 'exp_number', 'dua_intr', 'seabridge', 'sencamer', 'comex', 'recognition_date', 'receipt_date', 'shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date', 'registration_date', 'phase_two_recognition_date', 'validation_date', 'plant_receipt_date', 'location', 'return_date'])]
+#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status', 'status_bl', 'exp_number', 'dua_intr', 'seabridge', 'sencamer', 'comex', 'recognition_date', 'receipt_date', 'shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date', 'registration_date', 'phase_two_recognition_date', 'validation_date', 'plant_receipt_date', 'location', 'return_date', 'original_docs_receipt_date', 'aa_instructions_sent_date', 'bl_release_date', 'sencamer_request_date', 'sencamer_receipt_date', 'comex_request_date', 'comex_receipt_date', 'customs_agent_status', 'customs_agent_observation'])]
 class MscShipment extends Model
 {
     /** @use HasFactory<MscShipmentFactory> */
@@ -52,7 +59,7 @@ class MscShipment extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['etd' => 'date', 'eta' => 'date', 'recognition_date' => 'date', 'receipt_date' => 'date', 'etd_vnzl' => 'date', 'eta_vnzl' => 'date', 'in_bond_date' => 'date', 'delay_date' => 'date', 'legal_abandonment_date' => 'date', 'registration_date' => 'date', 'phase_two_recognition_date' => 'date', 'validation_date' => 'date', 'plant_receipt_date' => 'date', 'return_date' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'free_days' => 'integer', 'status' => MscShipmentStatus::class, 'status_bl' => MscBillOfLadingStatus::class];
+        return ['etd' => 'date', 'eta' => 'date', 'recognition_date' => 'date', 'receipt_date' => 'date', 'etd_vnzl' => 'date', 'eta_vnzl' => 'date', 'in_bond_date' => 'date', 'delay_date' => 'date', 'legal_abandonment_date' => 'date', 'registration_date' => 'date', 'phase_two_recognition_date' => 'date', 'validation_date' => 'date', 'plant_receipt_date' => 'date', 'return_date' => 'date', 'original_docs_receipt_date' => 'date', 'aa_instructions_sent_date' => 'date', 'bl_release_date' => 'date', 'sencamer_request_date' => 'date', 'sencamer_receipt_date' => 'date', 'comex_request_date' => 'date', 'comex_receipt_date' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'free_days' => 'integer', 'status' => MscShipmentStatus::class, 'status_bl' => MscBillOfLadingStatus::class];
     }
 
     /** @return BelongsTo<Product, $this> */

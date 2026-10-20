@@ -59,7 +59,7 @@
         @if($foreignTrade)
             <div data-foreign-trade-notebook class="mt-8 min-w-0 rounded-2xl border border-slate-200 dark:border-white/10">
                 <div role="tablist" aria-label="Fases del comercio exterior" class="flex overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 dark:border-white/10 dark:bg-white/5">
-                    @foreach(['phase-1' => 'Fase 1', 'phase-2' => 'Fase 2', 'phase-3' => 'Fase 3', 'phase-4' => 'Fase 4', 'notes' => 'Notas'] as $tab => $label)
+                    @foreach(['phase-1' => 'Fase 1', 'phase-2' => 'Fase 2', 'phase-3' => 'Fase 3', 'notes' => 'Notas'] as $tab => $label)
                         <button
                             type="button"
                             id="foreign-trade-tab-{{ $tab }}"
@@ -153,6 +153,21 @@
                                     <x-forms.input name="plant_receipt_date" label="RECEPCIÓN PLANTA" type="date" wire:model="plant_receipt_date" />
                                     <x-forms.input name="location" label="UBICACIÓN" wire:model="location" maxlength="255" />
                                     <x-forms.input name="return_date" label="DEVOLUCIÓN" type="date" wire:model="return_date" />
+                                </div>
+                            @elseif($activeForeignTradeTab === 'phase-3')
+                                <div class="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                    <x-forms.input name="original_docs_receipt_date" label="FECHA RECEP DE DOC ORIG" type="date" wire:model="original_docs_receipt_date" />
+                                    <x-forms.input name="aa_instructions_sent_date" label="FECHA INSTRUCCIONES ENVIADAS AA" type="date" wire:model="aa_instructions_sent_date" />
+                                    <x-forms.input name="bl_release_date" label="FECHA LIBERACION BL" type="date" wire:model="bl_release_date" />
+                                    <x-forms.input name="sencamer_request_date" label="FECHA DE SOLICITUD DE SENCAMER" type="date" wire:model="sencamer_request_date" />
+                                    <x-forms.input name="sencamer_receipt_date" label="FECHA RECEPCION DE SENCAMER" type="date" wire:model="sencamer_receipt_date" />
+                                    <x-forms.input name="comex_request_date" label="FECHA SOLICITUD DE COMEX" type="date" wire:model="comex_request_date" />
+                                    <x-forms.input name="comex_receipt_date" label="FECHA RECEPCION DE COMEX" type="date" wire:model="comex_receipt_date" />
+                                </div>
+                            @elseif($activeForeignTradeTab === 'notes')
+                                <div class="grid min-w-0 gap-5 sm:grid-cols-2">
+                                    <x-forms.textarea name="customs_agent_status" label="STATUS AGENTE DE ADUANA" wire:model="customs_agent_status" maxlength="10000" />
+                                    <x-forms.textarea name="customs_agent_observation" label="OBSERVACION AGENTE DE ADUANA" wire:model="customs_agent_observation" maxlength="10000" />
                                 </div>
                             @endif
                     </div>

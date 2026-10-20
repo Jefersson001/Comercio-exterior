@@ -28,4 +28,10 @@ class Product extends Model
     {
         return $this->hasMany(MscShipment::class);
     }
+
+    /** @return HasMany<ProductVariant, $this> */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('id');
+    }
 }

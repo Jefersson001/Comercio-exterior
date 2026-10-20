@@ -33,6 +33,7 @@ class Index extends Component
         return view('pages.configuration.products.index', [
             'products' => Product::query()
                 ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
+                ->with('variants')
                 ->orderBy('name')->orderBy('id')->paginate(15),
         ])->layout('layouts.dashboard', ['title' => 'Productos', 'heading' => 'Productos']);
     }

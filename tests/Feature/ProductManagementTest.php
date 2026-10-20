@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Pages\Configuration\Products\Form;
 use App\Livewire\Pages\Configuration\Products\Index;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,6 +25,10 @@ class ProductManagementTest extends TestCase
     public function test_product_information_is_limited_to_name(): void
     {
         $this->assertEqualsCanonicalizing(['id', 'name', 'units_per_container', 'created_at', 'updated_at'], Schema::getColumnListing('products'));
+        $this->assertEqualsCanonicalizing(
+            ['id', 'product_id', 'color', 'created_at', 'updated_at'],
+            Schema::getColumnListing('product_variants'),
+        );
     }
 
     public function test_products_require_an_authenticated_administrator(): void
@@ -51,7 +56,14 @@ class ProductManagementTest extends TestCase
         $editUrl = route('configuration.products.edit', $product);
         $this->get(route('configuration.products.index'))->assertOk()->assertSee($product->name)
             ->assertSee('data-href="'.$editUrl.'"', false)->assertSee('href="'.$editUrl.'"', false);
-        $this->get(route('configuration.products.create'))->assertOk()->assertSee('Nombre *')->assertDontSee('Eliminar producto');
+        $this->get(route('configuration.products.create'))
+            ->assertOk()
+            ->assertSee('Nombre *')
+            ->assertSee('Variantes por color')
+            ->assertSee('Agregar una línea')
+            ->assertSee('No hay colores agregados.')
+            ->assertDontSee('Agregar variante')
+            ->assertDontSee('Eliminar producto');
         $this->get($editUrl)->assertOk()->assertSee('Guardar cambios')->assertSee('Eliminar producto');
         $this->get(route('dashboard'))->assertSee('href="'.route('configuration.products.index').'"', false);
 
@@ -64,6 +76,112 @@ class ProductManagementTest extends TestCase
         Livewire::test(Form::class)->set('name', '  Producto nuevo  ')->set('units_per_container', '24')->call('save')
             ->assertHasNoErrors()->assertRedirect(route('configuration.products.index'));
         $this->assertDatabaseHas('products', ['name' => 'Producto nuevo', 'units_per_container' => 24]);
+    }
+
+    public function test_administrator_can_create_a_product_with_color_variants(): void
+    {
+        $this->actingAs($this->administrator());
+
+        Livewire::test(Form::class)
+            ->set('name', 'Camisa')
+            ->set('units_per_container', '24')
+            ->call('addVariant')
+            ->assertSee('placeholder="Escribe el color..."', false)
+            ->set('variants.0.color', ' Rojo ')
+            ->call('addVariant')
+            ->set('variants.1.color', 'Azul')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('configuration.products.index'));
+
+        $product = Product::where('name', 'Camisa')->firstOrFail();
+        $this->assertSame([
+            ['color' => 'Rojo'],
+            ['color' => 'Azul'],
+        ], $product->variants->map(fn (ProductVariant $variant): array => [
+            'color' => $variant->color,
+        ])->all());
+    }
+
+    public function test_administrator_can_edit_and_remove_product_variants(): void
+    {
+        $this->actingAs($this->administrator());
+        $product = Product::factory()->create();
+        $red = $product->variants()->create(['color' => 'Rojo']);
+        $blue = $product->variants()->create(['color' => 'Azul']);
+
+        Livewire::test(Form::class, ['product' => $product])
+            ->assertSet('variants', [
+                ['id' => $red->id, 'color' => 'Rojo'],
+                ['id' => $blue->id, 'color' => 'Azul'],
+            ])
+            ->call('removeVariant', 1)
+            ->call('addVariant')
+            ->set('variants.1.color', 'Verde')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame([
+            ['color' => 'Rojo'],
+            ['color' => 'Verde'],
+        ], $product->fresh()->variants->map(fn (ProductVariant $variant): array => [
+            'color' => $variant->color,
+        ])->all());
+        $this->assertModelMissing($blue);
+    }
+
+    public function test_variant_colors_are_required_and_unique_per_product(): void
+    {
+        $this->actingAs($this->administrator());
+
+        Livewire::test(Form::class)
+            ->call('addVariant')
+            ->set('variants.0.color', '')
+            ->call('addVariant')
+            ->set('variants.1.color', 'Rojo')
+            ->call('addVariant')
+            ->set('variants.2.color', ' rojo ')
+            ->set('name', 'Producto con variantes inválidas')
+            ->call('save')
+            ->assertHasErrors([
+                'variants.0.color',
+                'variants.2.color',
+            ]);
+
+        $this->assertDatabaseMissing('products', ['name' => 'Producto con variantes inválidas']);
+    }
+
+    public function test_product_form_rejects_variant_ids_owned_by_another_product(): void
+    {
+        $this->actingAs($this->administrator());
+        $product = Product::factory()->create(['name' => 'Producto propio']);
+        $otherVariant = Product::factory()->create(['name' => 'Otro producto'])
+            ->variants()->create(['color' => 'Negro']);
+
+        Livewire::test(Form::class, ['product' => $product])
+            ->set('variants', [
+                ['id' => $otherVariant->id, 'color' => 'Blanco'],
+            ])
+            ->call('save')
+            ->assertHasErrors('variants.0.id');
+
+        $this->assertSame([], $product->fresh()->variants->all());
+        $this->assertModelExists($otherVariant);
+    }
+
+    public function test_product_list_shows_variant_colors(): void
+    {
+        $this->actingAs($this->administrator());
+        $product = Product::factory()->create(['name' => 'Producto con color']);
+        $product->variants()->create(['color' => 'Morado']);
+
+        $this->get(route('configuration.products.index'))
+            ->assertOk()
+            ->assertSee('Variantes')
+            ->assertSee('Morado')
+            ->assertDontSee('Inventario')
+            ->assertDontSee('SKU')
+            ->assertDontSee('disponibles');
     }
 
     public function test_name_is_required_unique_and_limited_to_255_characters(): void
@@ -104,8 +222,10 @@ class ProductManagementTest extends TestCase
     {
         $this->actingAs($this->administrator());
         $product = Product::factory()->create();
+        $variant = $product->variants()->create(['color' => 'Blanco']);
         Livewire::test(Form::class, ['product' => $product])->call('delete')->assertRedirect(route('configuration.products.index'));
         $this->assertModelMissing($product);
+        $this->assertModelMissing($variant);
     }
 
     public function test_search_filters_products_and_resets_pagination(): void

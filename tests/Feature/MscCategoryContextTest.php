@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MscBillOfLadingStatus;
 use App\Livewire\Pages\Msc\Form;
 use App\Livewire\Pages\Msc\Import;
 use App\Livewire\Pages\Msc\Index;
-use App\Enums\MscBillOfLadingStatus;
 use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
@@ -43,7 +43,7 @@ class MscCategoryContextTest extends TestCase
         $this->get(route('foreign-trade.msc.edit', $shipment))->assertOk()->assertSee('id="category_id"', false)
             ->assertSee('data-foreign-trade-notebook', false)
             ->assertSee('role="tab"', false)
-            ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertSee('Fase 4')->assertSee('Notas')
+            ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertDontSee('Fase 4')->assertSee('Notas')
             ->assertSee('data-foreign-trade-panel="phase-1"', false)
             ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor', 'Año', 'ETD', 'ETA VNZL', 'Puerto', 'TRASEGADO', 'In bond', 'Días libres', 'Días demora', 'Abandono legal'])
             ->assertSee('Categoría exclusiva')->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
@@ -65,9 +65,48 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('data-foreign-trade-panel="phase-2"', false)
             ->assertSeeInOrder(['name=\"registration_date\"', 'name=\"phase_two_recognition_date\"', 'name=\"validation_date\"', 'name=\"plant_receipt_date\"', 'name=\"location\"', 'name=\"return_date\"'], false)
             ->assertDontSee('id="category_id"', false)
+            ->call('selectForeignTradeTab', 'phase-3')
+            ->assertSet('activeForeignTradeTab', 'phase-3')
+            ->assertSee('data-foreign-trade-panel="phase-3"', false)
+            ->assertSeeInOrder(['name=\"original_docs_receipt_date\"', 'name=\"aa_instructions_sent_date\"', 'name=\"bl_release_date\"', 'name=\"sencamer_request_date\"', 'name=\"sencamer_receipt_date\"', 'name=\"comex_request_date\"', 'name=\"comex_receipt_date\"'], false)
+            ->assertDontSee('id="category_id"', false)
             ->call('selectForeignTradeTab', 'notes')
             ->assertSee('data-foreign-trade-panel="notes"', false)
+            ->assertSee('STATUS AGENTE DE ADUANA')
+            ->assertSee('OBSERVACION AGENTE DE ADUANA')
+            ->assertSee('<textarea id="customs_agent_status"', false)
+            ->assertSee('<textarea id="customs_agent_observation"', false)
+            ->assertDontSee('Fase 4')
             ->assertDontSee('id="category_id"', false);
+    }
+
+    public function test_customs_agent_notes_save_reload_and_validate(): void
+    {
+        $shipment = MscShipment::factory()->create();
+        $status = str_repeat('Estado revisado.', 30);
+        $observation = 'Pendiente de confirmación del agente.';
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('selectForeignTradeTab', 'notes')
+            ->set('customs_agent_status', $status)
+            ->set('customs_agent_observation', $observation)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $shipment->refresh();
+        $this->assertSame($status, $shipment->customs_agent_status);
+        $this->assertSame($observation, $shipment->customs_agent_observation);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('selectForeignTradeTab', 'notes')
+            ->assertSet('customs_agent_status', $status)
+            ->assertSet('customs_agent_observation', $observation);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->set('customs_agent_status', str_repeat('A', 10001))
+            ->set('customs_agent_observation', str_repeat('A', 10001))
+            ->call('save')
+            ->assertHasErrors(['customs_agent_status', 'customs_agent_observation']);
     }
 
     public function test_foreign_trade_phase_one_saves_details_and_multiple_container_lines(): void
@@ -159,6 +198,42 @@ class MscCategoryContextTest extends TestCase
             ->assertSet('return_date', '2026-10-29');
     }
 
+    public function test_foreign_trade_phase_three_saves_and_reloads_all_dates(): void
+    {
+        $shipment = MscShipment::factory()->create();
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('selectForeignTradeTab', 'phase-3')
+            ->set('original_docs_receipt_date', '2026-10-30')
+            ->set('aa_instructions_sent_date', '2026-10-31')
+            ->set('bl_release_date', '2026-11-01')
+            ->set('sencamer_request_date', '2026-11-02')
+            ->set('sencamer_receipt_date', '2026-11-03')
+            ->set('comex_request_date', '2026-11-04')
+            ->set('comex_receipt_date', '2026-11-05')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $shipment->refresh();
+        $this->assertSame('2026-10-30', $shipment->original_docs_receipt_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-31', $shipment->aa_instructions_sent_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-01', $shipment->bl_release_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-02', $shipment->sencamer_request_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-03', $shipment->sencamer_receipt_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-04', $shipment->comex_request_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-05', $shipment->comex_receipt_date?->format('Y-m-d'));
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('selectForeignTradeTab', 'phase-3')
+            ->assertSet('original_docs_receipt_date', '2026-10-30')
+            ->assertSet('aa_instructions_sent_date', '2026-10-31')
+            ->assertSet('bl_release_date', '2026-11-01')
+            ->assertSet('sencamer_request_date', '2026-11-02')
+            ->assertSet('sencamer_receipt_date', '2026-11-03')
+            ->assertSet('comex_request_date', '2026-11-04')
+            ->assertSet('comex_receipt_date', '2026-11-05');
+    }
+
     public function test_foreign_trade_phase_one_can_edit_and_remove_container_lines(): void
     {
         $shipment = MscShipment::factory()->create();
@@ -191,6 +266,15 @@ class MscCategoryContextTest extends TestCase
             'plant_receipt_date' => '2026-10-28',
             'location' => 'Almacén exterior',
             'return_date' => '2026-10-29',
+            'original_docs_receipt_date' => '2026-10-30',
+            'aa_instructions_sent_date' => '2026-10-31',
+            'bl_release_date' => '2026-11-01',
+            'sencamer_request_date' => '2026-11-02',
+            'sencamer_receipt_date' => '2026-11-03',
+            'comex_request_date' => '2026-11-04',
+            'comex_receipt_date' => '2026-11-05',
+            'customs_agent_status' => 'En revisión',
+            'customs_agent_observation' => 'Dato reservado para Comercio Exterior.',
         ]);
         $shipment->containers()->create(['name' => 'FOREIGN-CONT']);
 
@@ -204,6 +288,15 @@ class MscCategoryContextTest extends TestCase
             ->assertDontSee('name=\"plant_receipt_date\"', false)
             ->assertDontSee('name=\"location\"', false)
             ->assertDontSee('name=\"return_date\"', false)
+            ->assertDontSee('name=\"original_docs_receipt_date\"', false)
+            ->assertDontSee('name=\"aa_instructions_sent_date\"', false)
+            ->assertDontSee('name=\"bl_release_date\"', false)
+            ->assertDontSee('name=\"sencamer_request_date\"', false)
+            ->assertDontSee('name=\"sencamer_receipt_date\"', false)
+            ->assertDontSee('name=\"comex_request_date\"', false)
+            ->assertDontSee('name=\"comex_receipt_date\"', false)
+            ->assertDontSee('STATUS AGENTE DE ADUANA')
+            ->assertDontSee('OBSERVACION AGENTE DE ADUANA')
             ->assertDontSee('id="category_id"', false);
 
         Livewire::test(Form::class, ['shipment' => $shipment])
@@ -223,6 +316,35 @@ class MscCategoryContextTest extends TestCase
         $this->assertSame('2026-10-28', $shipment->fresh()->plant_receipt_date?->format('Y-m-d'));
         $this->assertSame('Almacén exterior', $shipment->fresh()->location);
         $this->assertSame('2026-10-29', $shipment->fresh()->return_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-30', $shipment->fresh()->original_docs_receipt_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-31', $shipment->fresh()->aa_instructions_sent_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-01', $shipment->fresh()->bl_release_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-02', $shipment->fresh()->sencamer_request_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-03', $shipment->fresh()->sencamer_receipt_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-04', $shipment->fresh()->comex_request_date?->format('Y-m-d'));
+        $this->assertSame('2026-11-05', $shipment->fresh()->comex_receipt_date?->format('Y-m-d'));
+        $this->assertSame('En revisión', $shipment->fresh()->customs_agent_status);
+        $this->assertSame('Dato reservado para Comercio Exterior.', $shipment->fresh()->customs_agent_observation);
+    }
+
+    public function test_foreign_trade_phase_three_validates_every_field_as_a_date(): void
+    {
+        $shipment = MscShipment::factory()->create();
+        $fields = [
+            'original_docs_receipt_date',
+            'aa_instructions_sent_date',
+            'bl_release_date',
+            'sencamer_request_date',
+            'sencamer_receipt_date',
+            'comex_request_date',
+            'comex_receipt_date',
+        ];
+
+        $component = Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true]);
+        foreach ($fields as $field) {
+            $component->set($field, 'not-a-date');
+        }
+        $component->call('save')->assertHasErrors($fields);
     }
 
     public function test_foreign_trade_phase_two_validates_date_fields_and_location_length(): void
