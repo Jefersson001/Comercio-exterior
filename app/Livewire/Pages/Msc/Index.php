@@ -73,7 +73,7 @@ class Index extends Component
     public function render(): View
     {
         return view('pages.msc.index', [
-            'statuses' => MscShipmentStatus::cases(),
+            'statuses' => MscShipmentStatus::options(),
             'billOfLadingStatuses' => MscBillOfLadingStatus::cases(),
             'categories' => $this->foreignTrade ? Category::query()->orderBy('name')->get() : collect(),
             'shipments' => MscShipment::query()->with($this->foreignTrade ? ['product', 'category', 'factoryRecord', 'vessel'] : ['product', 'factoryRecord', 'vessel'])

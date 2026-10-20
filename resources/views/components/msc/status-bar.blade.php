@@ -7,7 +7,7 @@
     $currentStatus = $status instanceof \App\Enums\MscShipmentStatus
         ? $status
         : \App\Enums\MscShipmentStatus::tryFrom((string) $status);
-    $statuses = \App\Enums\MscShipmentStatus::cases();
+    $statuses = \App\Enums\MscShipmentStatus::options();
     $currentIndex = $currentStatus === null
         ? -1
         : array_search($currentStatus, $statuses, true);
