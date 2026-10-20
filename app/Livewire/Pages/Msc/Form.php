@@ -88,6 +88,18 @@ class Form extends Component
 
     public string $legal_abandonment_date = '';
 
+    public string $registration_date = '';
+
+    public string $phase_two_recognition_date = '';
+
+    public string $validation_date = '';
+
+    public string $plant_receipt_date = '';
+
+    public string $location = '';
+
+    public string $return_date = '';
+
     /** @var array<int, array{name: string}> */
     public array $containerLines = [];
 
@@ -126,6 +138,12 @@ class Form extends Component
                 $this->free_days = $shipment->free_days === null ? '' : (string) $shipment->free_days;
                 $this->delay_date = $shipment->delay_date?->format('Y-m-d') ?? '';
                 $this->legal_abandonment_date = $shipment->legal_abandonment_date?->format('Y-m-d') ?? '';
+                $this->registration_date = $shipment->registration_date?->format('Y-m-d') ?? '';
+                $this->phase_two_recognition_date = $shipment->phase_two_recognition_date?->format('Y-m-d') ?? '';
+                $this->validation_date = $shipment->validation_date?->format('Y-m-d') ?? '';
+                $this->plant_receipt_date = $shipment->plant_receipt_date?->format('Y-m-d') ?? '';
+                $this->location = $shipment->location ?? '';
+                $this->return_date = $shipment->return_date?->format('Y-m-d') ?? '';
                 $this->containerLines = $shipment->containers
                     ->map(fn (MscShipmentContainer $container): array => ['name' => $container->name])
                     ->values()
@@ -199,7 +217,7 @@ class Form extends Component
             foreach (['recognition_date', 'receipt_date'] as $field) {
                 $this->{$field} = trim($this->{$field});
             }
-            foreach (['shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date'] as $field) {
+            foreach (['shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date', 'registration_date', 'phase_two_recognition_date', 'validation_date', 'plant_receipt_date', 'location', 'return_date'] as $field) {
                 $this->{$field} = trim($this->{$field});
             }
             foreach ($this->containerLines as $index => $line) {

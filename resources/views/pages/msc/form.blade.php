@@ -145,6 +145,15 @@
                                     <x-forms.input name="delay_date" label="Días demora" type="date" wire:model="delay_date" />
                                     <x-forms.input name="legal_abandonment_date" label="Abandono legal" type="date" wire:model="legal_abandonment_date" />
                                 </div>
+                            @elseif($activeForeignTradeTab === 'phase-2')
+                                <div class="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                    <x-forms.input name="registration_date" label="REGISTRO" type="date" wire:model="registration_date" />
+                                    <x-forms.input name="phase_two_recognition_date" label="RECONOCIMIENTO" type="date" wire:model="phase_two_recognition_date" />
+                                    <x-forms.input name="validation_date" label="VALIDACIÓN" type="date" wire:model="validation_date" />
+                                    <x-forms.input name="plant_receipt_date" label="RECEPCIÓN PLANTA" type="date" wire:model="plant_receipt_date" />
+                                    <x-forms.input name="location" label="UBICACIÓN" wire:model="location" maxlength="255" />
+                                    <x-forms.input name="return_date" label="DEVOLUCIÓN" type="date" wire:model="return_date" />
+                                </div>
                             @endif
                     </div>
             </div>

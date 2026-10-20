@@ -63,6 +63,7 @@ class MscCategoryContextTest extends TestCase
             ->call('selectForeignTradeTab', 'phase-2')
             ->assertSet('activeForeignTradeTab', 'phase-2')
             ->assertSee('data-foreign-trade-panel="phase-2"', false)
+            ->assertSeeInOrder(['name=\"registration_date\"', 'name=\"phase_two_recognition_date\"', 'name=\"validation_date\"', 'name=\"plant_receipt_date\"', 'name=\"location\"', 'name=\"return_date\"'], false)
             ->assertDontSee('id="category_id"', false)
             ->call('selectForeignTradeTab', 'notes')
             ->assertSee('data-foreign-trade-panel="notes"', false)
@@ -125,6 +126,39 @@ class MscCategoryContextTest extends TestCase
         $this->assertSame(['MSCU1234567', 'TGHU7654321'], $shipment->containers->pluck('name')->all());
     }
 
+    public function test_foreign_trade_phase_two_saves_and_reloads_its_dates_and_location(): void
+    {
+        $shipment = MscShipment::factory()->create();
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('selectForeignTradeTab', 'phase-2')
+            ->set('registration_date', '2026-10-25')
+            ->set('phase_two_recognition_date', '2026-10-26')
+            ->set('validation_date', '2026-10-27')
+            ->set('plant_receipt_date', '2026-10-28')
+            ->set('location', 'Almacén principal')
+            ->set('return_date', '2026-10-29')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $shipment->refresh();
+        $this->assertSame('2026-10-25', $shipment->registration_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-26', $shipment->phase_two_recognition_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-27', $shipment->validation_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-28', $shipment->plant_receipt_date?->format('Y-m-d'));
+        $this->assertSame('Almacén principal', $shipment->location);
+        $this->assertSame('2026-10-29', $shipment->return_date?->format('Y-m-d'));
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('selectForeignTradeTab', 'phase-2')
+            ->assertSet('registration_date', '2026-10-25')
+            ->assertSet('phase_two_recognition_date', '2026-10-26')
+            ->assertSet('validation_date', '2026-10-27')
+            ->assertSet('plant_receipt_date', '2026-10-28')
+            ->assertSet('location', 'Almacén principal')
+            ->assertSet('return_date', '2026-10-29');
+    }
+
     public function test_foreign_trade_phase_one_can_edit_and_remove_container_lines(): void
     {
         $shipment = MscShipment::factory()->create();
@@ -151,6 +185,12 @@ class MscCategoryContextTest extends TestCase
             'shipment_year' => '2026',
             'etd_vnzl' => '2026-10-20',
             'free_days' => 15,
+            'registration_date' => '2026-10-25',
+            'phase_two_recognition_date' => '2026-10-26',
+            'validation_date' => '2026-10-27',
+            'plant_receipt_date' => '2026-10-28',
+            'location' => 'Almacén exterior',
+            'return_date' => '2026-10-29',
         ]);
         $shipment->containers()->create(['name' => 'FOREIGN-CONT']);
 
@@ -158,6 +198,12 @@ class MscCategoryContextTest extends TestCase
             ->assertDontSee('N°EXP.')
             ->assertDontSee('CONTENEDOR')
             ->assertDontSee('ETA VNZL')
+            ->assertDontSee('name=\"registration_date\"', false)
+            ->assertDontSee('name=\"phase_two_recognition_date\"', false)
+            ->assertDontSee('name=\"validation_date\"', false)
+            ->assertDontSee('name=\"plant_receipt_date\"', false)
+            ->assertDontSee('name=\"location\"', false)
+            ->assertDontSee('name=\"return_date\"', false)
             ->assertDontSee('id="category_id"', false);
 
         Livewire::test(Form::class, ['shipment' => $shipment])
@@ -171,6 +217,34 @@ class MscCategoryContextTest extends TestCase
         $this->assertSame('2026-10-20', $shipment->fresh()->etd_vnzl?->format('Y-m-d'));
         $this->assertSame(15, $shipment->fresh()->free_days);
         $this->assertSame(['FOREIGN-CONT'], $shipment->fresh()->containers->pluck('name')->all());
+        $this->assertSame('2026-10-25', $shipment->fresh()->registration_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-26', $shipment->fresh()->phase_two_recognition_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-27', $shipment->fresh()->validation_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-28', $shipment->fresh()->plant_receipt_date?->format('Y-m-d'));
+        $this->assertSame('Almacén exterior', $shipment->fresh()->location);
+        $this->assertSame('2026-10-29', $shipment->fresh()->return_date?->format('Y-m-d'));
+    }
+
+    public function test_foreign_trade_phase_two_validates_date_fields_and_location_length(): void
+    {
+        $shipment = MscShipment::factory()->create();
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->set('registration_date', 'invalid-date')
+            ->set('phase_two_recognition_date', 'invalid-date')
+            ->set('validation_date', 'invalid-date')
+            ->set('plant_receipt_date', 'invalid-date')
+            ->set('location', str_repeat('A', 256))
+            ->set('return_date', 'invalid-date')
+            ->call('save')
+            ->assertHasErrors([
+                'registration_date',
+                'phase_two_recognition_date',
+                'validation_date',
+                'plant_receipt_date',
+                'location',
+                'return_date',
+            ]);
     }
 
     public function test_foreign_trade_phase_one_validates_year_dates_and_free_days(): void
