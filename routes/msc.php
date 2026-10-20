@@ -11,6 +11,7 @@ Route::middleware(['auth', 'can:manage-msc'])->prefix('msc')->name('msc.')->grou
     Route::get('crear', Form::class)->name('create');
     Route::get('importar', Import::class)->name('import');
     Route::get('exportar', [MscSpreadsheetController::class, 'export'])->name('export');
+    Route::get('reporte-control-carga-directo', [MscSpreadsheetController::class, 'exportDirect'])->name('export-direct');
     Route::get('plantilla', [MscSpreadsheetController::class, 'template'])->name('template');
     Route::get('{shipment}/editar', Form::class)->name('edit');
 });
@@ -20,6 +21,7 @@ Route::middleware(['auth', 'can:manage-msc'])->prefix('comercio-exterior/msc')->
     Route::get('crear', Form::class)->defaults('foreignTrade', true)->name('create');
     Route::get('importar', Import::class)->defaults('foreignTrade', true)->name('import');
     Route::get('exportar', [MscSpreadsheetController::class, 'export'])->name('export');
+    Route::get('reporte-control-carga-directo', [MscSpreadsheetController::class, 'exportDirect'])->name('export-direct');
     Route::get('plantilla', [MscSpreadsheetController::class, 'template'])->name('template');
     Route::get('{shipment}/editar', Form::class)->defaults('foreignTrade', true)->name('edit');
 });

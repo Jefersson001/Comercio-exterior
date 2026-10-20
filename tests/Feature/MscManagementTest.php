@@ -2,15 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MscShipmentStatus;
 use App\Livewire\Pages\Configuration\Products\Form as ProductForm;
 use App\Livewire\Pages\Msc\Form;
 use App\Livewire\Pages\Msc\Index;
-use App\Enums\MscShipmentStatus;
-use App\Models\MscShipment;
 use App\Models\Factory;
+use App\Models\MscShipment;
 use App\Models\Product;
-use App\Models\Vessel;
 use App\Models\User;
+use App\Models\Vessel;
 use App\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -32,7 +32,7 @@ class MscManagementTest extends TestCase
     public function test_guests_cannot_access_msc_pages(): void
     {
         $shipment = MscShipment::factory()->create();
-        foreach ([route('msc.index'), route('msc.create'), route('msc.edit', $shipment), route('msc.import'), route('msc.export'), route('msc.template')] as $url) {
+        foreach ([route('msc.index'), route('msc.create'), route('msc.edit', $shipment), route('msc.import'), route('msc.export'), route('msc.export-direct'), route('msc.template')] as $url) {
             $this->get($url)->assertRedirect(route('login'));
         }
     }
@@ -46,11 +46,13 @@ class MscManagementTest extends TestCase
             ->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
         $response->assertSee('Reporte Control Carga Interno')
             ->assertSee('Reporte Control Carga Direct')
-            ->assertSee('href="'.route('msc.export', ['search' => '']).'"', false);
+            ->assertSee('href="'.route('msc.export', ['search' => '']).'"', false)
+            ->assertSee('href="'.route('msc.export-direct', ['search' => '']).'"', false);
         $this->get(route('foreign-trade.msc.index'))->assertOk()
             ->assertSee('Reporte Control Carga Interno')
             ->assertSee('Reporte Control Carga Direct')
-            ->assertSee('href="'.route('msc.export', ['search' => '']).'"', false);
+            ->assertSee('href="'.route('msc.export', ['search' => '']).'"', false)
+            ->assertSee('href="'.route('msc.export-direct', ['search' => '']).'"', false);
         $response->assertSee('data-href="'.route('msc.edit', $shipment).'"', false);
         $this->get(route('msc.create'))->assertOk()->assertSee('Se asignará al guardar');
         $this->get(route('msc.edit', $shipment))->assertOk()->assertSee('MSC No. '.$shipment->id);

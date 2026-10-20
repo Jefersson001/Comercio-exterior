@@ -38,6 +38,18 @@ class MscSpreadsheetController extends Controller
         return $this->download($shipments, 'msc-'.now()->format('Y-m-d').'.xlsx', $foreignTrade);
     }
 
+    public function exportDirect(Request $request): BinaryFileResponse
+    {
+        $request->validate(['search' => ['nullable', 'string', 'max:255']]);
+        $shipments = MscShipment::query()
+            ->with(['product', 'factoryRecord'])
+            ->search(trim((string) $request->input('search', '')), true)
+            ->orderBy('id')
+            ->lazy(500);
+
+        return $this->downloadDirectReport($shipments, 'reporte-control-carga-direct-'.now()->format('Y-m-d').'.xlsx');
+    }
+
     /** @param iterable<MscShipment> $shipments */
     private function downloadInternalReport(iterable $shipments, string $filename): BinaryFileResponse
     {
@@ -120,6 +132,70 @@ class MscSpreadsheetController extends Controller
                     ];
                     $cells = array_map(
                         static fn (string|int $value, int $index): NumericCell|StringCell => (in_array($index, [10, 14], true)
+                            ? new NumericCell((int) $value)
+                            : new StringCell((string) $value))->withStyle($reportCellStyle),
+                        $values,
+                        array_keys($values),
+                    );
+                    $writer->addRow(new Row($cells));
+                }
+            } finally {
+                $writer->close();
+            }
+        } catch (Throwable $exception) {
+            if (is_file($path)) {
+                unlink($path);
+            }
+            throw $exception;
+        }
+        clearstatcache(true, $path);
+
+        return response()->download($path, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])->deleteFileAfterSend();
+    }
+
+    /** @param iterable<MscShipment> $shipments */
+    private function downloadDirectReport(iterable $shipments, string $filename): BinaryFileResponse
+    {
+        $headers = [
+            'ESTATUS', 'BL Master', 'BL House', 'CANT.', 'MODELO/CONDICION',
+            'PROVEEDOR', 'UNID TOTALES', 'NOTA', 'ETD', 'ETA VZLA', 'PUERTO',
+        ];
+        $headerStyle = new Style(
+            fontBold: true,
+            fontSize: 8,
+            fontColor: Color::WHITE,
+            backgroundColor: '203764',
+            shouldWrapText: true,
+        );
+        $headerStyles = array_fill(0, count($headers), $headerStyle);
+        $reportCellStyle = new Style(fontSize: 8, shouldWrapText: true);
+        $path = tempnam(sys_get_temp_dir(), 'msc-direct-');
+        abort_if($path === false, 500, 'No se pudo preparar la descarga MSC.');
+        $writer = new Writer;
+        try {
+            $writer->openToFile($path);
+            try {
+                $writer->addRow(Row::fromValuesWithStyles($headers, $headerStyles));
+                foreach ($shipments as $shipment) {
+                    $notes = array_filter([
+                        $shipment->customs_agent_status ? 'STATUS AGENTE: '.$shipment->customs_agent_status : null,
+                        $shipment->customs_agent_observation ? 'OBSERVACIÓN: '.$shipment->customs_agent_observation : null,
+                    ]);
+                    $values = [
+                        $shipment->status?->value ?? '',
+                        $shipment->bl_master ?? '',
+                        $shipment->bl_house ?? '',
+                        $shipment->container_qty,
+                        $shipment->product->name,
+                        $shipment->factoryRecord?->name ?? '',
+                        $shipment->totalUnits() ?? '',
+                        implode("\n", $notes),
+                        $shipment->etd->format('Y-m-d'),
+                        $shipment->eta_vnzl?->format('Y-m-d') ?? '',
+                        $shipment->port ?? '',
+                    ];
+                    $cells = array_map(
+                        static fn (string|int $value, int $index): NumericCell|StringCell => (in_array($index, [3, 6], true)
                             ? new NumericCell((int) $value)
                             : new StringCell((string) $value))->withStyle($reportCellStyle),
                         $values,

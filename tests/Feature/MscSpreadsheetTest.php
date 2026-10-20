@@ -352,6 +352,54 @@ class MscSpreadsheetTest extends TestCase
         $this->assertSame('Documentación pendiente', $rows[1][41]);
     }
 
+    public function test_direct_report_exports_only_requested_columns_and_combines_customs_notes(): void
+    {
+        Product::firstOrFail()->update(['name' => 'Modelo Camisa']);
+        $factory = Factory::factory()->create(['name' => 'Proveedor Uno']);
+        $shipment = MscShipment::factory()->create([
+            'bl_master' => 'MASTER-1',
+            'bl_house' => 'HOUSE-1',
+            'factory_id' => $factory->id,
+            'product_id' => Product::firstOrFail()->id,
+            'container_qty' => 4,
+            'units_qty' => 28,
+            'status' => MscShipmentStatus::Puerto,
+            'customs_agent_status' => 'En revisión',
+            'customs_agent_observation' => 'Falta documento',
+            'eta_vnzl' => '2026-10-25',
+            'port' => 'La Guaira',
+        ]);
+
+        $filename = 'reporte-control-carga-direct-'.now()->format('Y-m-d').'.xlsx';
+        $response = $this->get(route('msc.export-direct'))->assertOk()->assertDownload($filename);
+        $path = $response->baseResponse->getFile()->getPathname();
+        $workbook = new \ZipArchive;
+        $this->assertSame(true, $workbook->open($path));
+        $styles = $workbook->getFromName('xl/styles.xml');
+        $workbook->close();
+        $this->assertIsString($styles);
+        $this->assertStringContainsString('203764', $styles);
+        $this->assertStringContainsString('<sz val="8"/>', $styles);
+
+        $rows = $this->read($path);
+        $this->assertSame([
+            'ESTATUS', 'BL Master', 'BL House', 'CANT.', 'MODELO/CONDICION',
+            'PROVEEDOR', 'UNID TOTALES', 'NOTA', 'ETD', 'ETA VZLA', 'PUERTO',
+        ], $rows[0]);
+        $this->assertCount(11, $rows[1]);
+        $this->assertSame('PUERTO', $rows[1][0]);
+        $this->assertSame('MASTER-1', $rows[1][1]);
+        $this->assertSame('HOUSE-1', $rows[1][2]);
+        $this->assertSame(4, $rows[1][3]);
+        $this->assertSame('Modelo Camisa', $rows[1][4]);
+        $this->assertSame('Proveedor Uno', $rows[1][5]);
+        $this->assertSame(28, $rows[1][6]);
+        $this->assertSame("STATUS AGENTE: En revisión\nOBSERVACIÓN: Falta documento", $rows[1][7]);
+        $this->assertSame('2026-10-01', $rows[1][8]);
+        $this->assertSame('2026-10-25', $rows[1][9]);
+        $this->assertSame('La Guaira', $rows[1][10]);
+    }
+
     public function test_export_respects_search_by_product_and_factory(): void
     {
         $factory = Factory::factory()->create(['name' => 'Special Factory']);

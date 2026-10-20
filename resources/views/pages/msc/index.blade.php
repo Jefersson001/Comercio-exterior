@@ -4,7 +4,7 @@
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ $this->mscRoute('template') }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Descargar plantilla</a>
             <a href="{{ route('msc.export', ['search' => $search]) }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Reporte Control Carga Interno</a>
-            <button type="button" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 dark:border-white/10 dark:text-slate-300">Reporte Control Carga Direct</button>
+            <a href="{{ route('msc.export-direct', ['search' => $search]) }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Reporte Control Carga Direct</a>
             <a href="{{ $this->mscRoute('import') }}" class="rounded-xl border border-indigo-200 px-5 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400/20 dark:text-indigo-300 dark:hover:bg-indigo-500/10">Importar MSC</a>
             <a href="{{ $this->mscRoute('create') }}" class="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400">Crear MSC</a>
         </div>
