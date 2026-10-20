@@ -70,6 +70,24 @@ class Form extends Component
 
     public string $receipt_date = '';
 
+    public string $shipment_year = '';
+
+    public string $etd_vnzl = '';
+
+    public string $eta_vnzl = '';
+
+    public string $port = '';
+
+    public string $trasegado = '';
+
+    public string $in_bond_date = '';
+
+    public string $free_days = '';
+
+    public string $delay_date = '';
+
+    public string $legal_abandonment_date = '';
+
     /** @var array<int, array{name: string}> */
     public array $containerLines = [];
 
@@ -99,6 +117,15 @@ class Form extends Component
                 $this->comex = $shipment->comex ?? '';
                 $this->recognition_date = $shipment->recognition_date?->format('Y-m-d') ?? '';
                 $this->receipt_date = $shipment->receipt_date?->format('Y-m-d') ?? '';
+                $this->shipment_year = $shipment->shipment_year ?? '';
+                $this->etd_vnzl = $shipment->etd_vnzl?->format('Y-m-d') ?? '';
+                $this->eta_vnzl = $shipment->eta_vnzl?->format('Y-m-d') ?? '';
+                $this->port = $shipment->port ?? '';
+                $this->trasegado = $shipment->trasegado ?? '';
+                $this->in_bond_date = $shipment->in_bond_date?->format('Y-m-d') ?? '';
+                $this->free_days = $shipment->free_days === null ? '' : (string) $shipment->free_days;
+                $this->delay_date = $shipment->delay_date?->format('Y-m-d') ?? '';
+                $this->legal_abandonment_date = $shipment->legal_abandonment_date?->format('Y-m-d') ?? '';
                 $this->containerLines = $shipment->containers
                     ->map(fn (MscShipmentContainer $container): array => ['name' => $container->name])
                     ->values()
@@ -170,6 +197,9 @@ class Form extends Component
                 $this->{$field} = trim($this->{$field});
             }
             foreach (['recognition_date', 'receipt_date'] as $field) {
+                $this->{$field} = trim($this->{$field});
+            }
+            foreach (['shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date'] as $field) {
                 $this->{$field} = trim($this->{$field});
             }
             foreach ($this->containerLines as $index => $line) {

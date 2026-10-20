@@ -45,7 +45,7 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('role="tab"', false)
             ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertSee('Fase 4')->assertSee('Notas')
             ->assertSee('data-foreign-trade-panel="phase-1"', false)
-            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor'])
+            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor', 'Año', 'ETD', 'ETA VNZL', 'Puerto', 'TRASEGADO', 'In bond', 'Días libres', 'Días demora', 'Abandono legal'])
             ->assertSee('Categoría exclusiva')->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
         $this->get(route('msc.edit', $shipment))->assertDontSee('data-foreign-trade-notebook', false);
         $this->assertDatabaseCount('msc_shipments', 1);
@@ -92,6 +92,15 @@ class MscCategoryContextTest extends TestCase
             ->set('containerLines.0.name', 'MSCU1234567')
             ->call('addContainerLine')
             ->set('containerLines.1.name', 'TGHU7654321')
+            ->set('shipment_year', '2026')
+            ->set('etd_vnzl', '2026-10-20')
+            ->set('eta_vnzl', '2026-10-21')
+            ->set('port', 'Puerto Cabello')
+            ->set('trasegado', 'TRS-09A')
+            ->set('in_bond_date', '2026-10-22')
+            ->set('free_days', '15')
+            ->set('delay_date', '2026-10-23')
+            ->set('legal_abandonment_date', '2026-10-24')
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('foreign-trade.msc.index'));
@@ -103,6 +112,15 @@ class MscCategoryContextTest extends TestCase
         $this->assertSame('COMEX-9', $shipment->comex);
         $this->assertSame('2026-10-18', $shipment->recognition_date?->format('Y-m-d'));
         $this->assertSame('2026-10-19', $shipment->receipt_date?->format('Y-m-d'));
+        $this->assertSame('2026', $shipment->shipment_year);
+        $this->assertSame('2026-10-20', $shipment->etd_vnzl?->format('Y-m-d'));
+        $this->assertSame('2026-10-21', $shipment->eta_vnzl?->format('Y-m-d'));
+        $this->assertSame('Puerto Cabello', $shipment->port);
+        $this->assertSame('TRS-09A', $shipment->trasegado);
+        $this->assertSame('2026-10-22', $shipment->in_bond_date?->format('Y-m-d'));
+        $this->assertSame(15, $shipment->free_days);
+        $this->assertSame('2026-10-23', $shipment->delay_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-24', $shipment->legal_abandonment_date?->format('Y-m-d'));
         $this->assertSame($category->id, $shipment->category_id);
         $this->assertSame(['MSCU1234567', 'TGHU7654321'], $shipment->containers->pluck('name')->all());
     }
@@ -130,12 +148,16 @@ class MscCategoryContextTest extends TestCase
         $shipment = MscShipment::factory()->create([
             'exp_number' => 'FOREIGN-EXP',
             'recognition_date' => '2026-10-18',
+            'shipment_year' => '2026',
+            'etd_vnzl' => '2026-10-20',
+            'free_days' => 15,
         ]);
         $shipment->containers()->create(['name' => 'FOREIGN-CONT']);
 
         $this->get(route('msc.edit', $shipment))
             ->assertDontSee('N°EXP.')
             ->assertDontSee('CONTENEDOR')
+            ->assertDontSee('ETA VNZL')
             ->assertDontSee('id="category_id"', false);
 
         Livewire::test(Form::class, ['shipment' => $shipment])
@@ -145,7 +167,22 @@ class MscCategoryContextTest extends TestCase
 
         $this->assertSame('FOREIGN-EXP', $shipment->fresh()->exp_number);
         $this->assertSame('2026-10-18', $shipment->fresh()->recognition_date?->format('Y-m-d'));
+        $this->assertSame('2026', $shipment->fresh()->shipment_year);
+        $this->assertSame('2026-10-20', $shipment->fresh()->etd_vnzl?->format('Y-m-d'));
+        $this->assertSame(15, $shipment->fresh()->free_days);
         $this->assertSame(['FOREIGN-CONT'], $shipment->fresh()->containers->pluck('name')->all());
+    }
+
+    public function test_foreign_trade_phase_one_validates_year_dates_and_free_days(): void
+    {
+        $shipment = MscShipment::factory()->create();
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->set('shipment_year', '20A6')
+            ->set('etd_vnzl', 'not-a-date')
+            ->set('free_days', '-1')
+            ->call('save')
+            ->assertHasErrors(['shipment_year', 'etd_vnzl', 'free_days']);
     }
 
     public function test_foreign_trade_can_assign_clear_and_validate_the_relation(): void

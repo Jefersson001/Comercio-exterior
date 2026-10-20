@@ -134,6 +134,16 @@
                                         </div>
                                         @error('containerLines')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                                     </section>
+
+                                    <x-forms.input name="shipment_year" label="Año" type="number" wire:model="shipment_year" min="1000" max="9999" step="1" />
+                                    <x-forms.input name="etd_vnzl" label="ETD" type="date" wire:model="etd_vnzl" />
+                                    <x-forms.input name="eta_vnzl" label="ETA VNZL" type="date" wire:model="eta_vnzl" />
+                                    <x-forms.input name="port" label="Puerto" wire:model="port" maxlength="255" />
+                                    <x-forms.input name="trasegado" label="TRASEGADO" wire:model="trasegado" maxlength="255" />
+                                    <x-forms.input name="in_bond_date" label="In bond" type="date" wire:model="in_bond_date" />
+                                    <x-forms.input name="free_days" label="Días libres" type="number" wire:model="free_days" min="0" max="2147483647" step="1" />
+                                    <x-forms.input name="delay_date" label="Días demora" type="date" wire:model="delay_date" />
+                                    <x-forms.input name="legal_abandonment_date" label="Abandono legal" type="date" wire:model="legal_abandonment_date" />
                                 </div>
                             @endif
                     </div>

@@ -29,8 +29,13 @@ use Illuminate\Support\Carbon;
  * @property MscBillOfLadingStatus|null $status_bl
  * @property Carbon|null $recognition_date
  * @property Carbon|null $receipt_date
+ * @property Carbon|null $etd_vnzl
+ * @property Carbon|null $eta_vnzl
+ * @property Carbon|null $in_bond_date
+ * @property Carbon|null $delay_date
+ * @property Carbon|null $legal_abandonment_date
  */
-#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status', 'status_bl', 'exp_number', 'dua_intr', 'seabridge', 'sencamer', 'comex', 'recognition_date', 'receipt_date'])]
+#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status', 'status_bl', 'exp_number', 'dua_intr', 'seabridge', 'sencamer', 'comex', 'recognition_date', 'receipt_date', 'shipment_year', 'etd_vnzl', 'eta_vnzl', 'port', 'trasegado', 'in_bond_date', 'free_days', 'delay_date', 'legal_abandonment_date'])]
 class MscShipment extends Model
 {
     /** @use HasFactory<MscShipmentFactory> */
@@ -42,7 +47,7 @@ class MscShipment extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['etd' => 'date', 'eta' => 'date', 'recognition_date' => 'date', 'receipt_date' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'status' => MscShipmentStatus::class, 'status_bl' => MscBillOfLadingStatus::class];
+        return ['etd' => 'date', 'eta' => 'date', 'recognition_date' => 'date', 'receipt_date' => 'date', 'etd_vnzl' => 'date', 'eta_vnzl' => 'date', 'in_bond_date' => 'date', 'delay_date' => 'date', 'legal_abandonment_date' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'free_days' => 'integer', 'status' => MscShipmentStatus::class, 'status_bl' => MscBillOfLadingStatus::class];
     }
 
     /** @return BelongsTo<Product, $this> */
