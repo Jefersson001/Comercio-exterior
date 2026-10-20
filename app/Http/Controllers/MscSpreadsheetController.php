@@ -23,27 +23,34 @@ class MscSpreadsheetController extends Controller
 
     public function export(Request $request): BinaryFileResponse
     {
-        $request->validate(['search' => ['nullable', 'string', 'max:255']]);
-        $foreignTrade = $request->routeIs('foreign-trade.msc.*');
-        $relations = $foreignTrade
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'foreign_trade' => ['sometimes', 'boolean'],
+        ]);
+        $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
+        $isForeignTradeRoute = $request->routeIs('foreign-trade.msc.*');
+        $relations = $isForeignTradeRoute
             ? ['product', 'category', 'factoryRecord', 'vessel']
             : ['product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant'];
         $shipments = MscShipment::query()->with($relations)
-            ->search(trim((string) $request->input('search', '')), $foreignTrade)->orderBy('id')->lazy(500);
+            ->search(trim((string) $request->input('search', '')), $foreignTradeContext)->orderBy('id')->lazy(500);
 
-        if (! $foreignTrade) {
+        if (! $isForeignTradeRoute) {
             return $this->downloadInternalReport($shipments, 'reporte-control-carga-interno-'.now()->format('Y-m-d').'.xlsx');
         }
 
-        return $this->download($shipments, 'msc-'.now()->format('Y-m-d').'.xlsx', $foreignTrade);
+        return $this->download($shipments, 'msc-'.now()->format('Y-m-d').'.xlsx', true);
     }
 
     public function exportDirect(Request $request): BinaryFileResponse
     {
-        $request->validate(['search' => ['nullable', 'string', 'max:255']]);
+        $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'foreign_trade' => ['sometimes', 'boolean'],
+        ]);
         $shipments = MscShipment::query()
             ->with(['product', 'factoryRecord'])
-            ->search(trim((string) $request->input('search', '')), true)
+            ->search(trim((string) $request->input('search', '')), $request->boolean('foreign_trade'))
             ->orderBy('id')
             ->lazy(500);
 

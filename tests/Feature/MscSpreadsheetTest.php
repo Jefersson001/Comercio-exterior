@@ -411,6 +411,28 @@ class MscSpreadsheetTest extends TestCase
         $this->assertSame($matched->bl_master, $rows[1][7]);
     }
 
+    public function test_both_reports_apply_the_same_search_filter_as_foreign_trade_list(): void
+    {
+        $category = Category::factory()->create(['name' => 'Categoría exclusiva para filtro']);
+        $matched = MscShipment::factory()->create(['category_id' => $category->id]);
+        MscShipment::factory()->create();
+
+        foreach (['msc.export', 'msc.export-direct'] as $route) {
+            $response = $this->get(route($route, ['search' => 'Categoría exclusiva para filtro', 'foreign_trade' => true]))
+                ->assertOk();
+            $rows = $this->read($response->baseResponse->getFile()->getPathname());
+            $this->assertCount(2, $rows);
+            $this->assertSame($matched->bl_master, $rows[1][$route === 'msc.export' ? 7 : 1]);
+        }
+
+        foreach (['msc.export', 'msc.export-direct'] as $route) {
+            $response = $this->get(route($route, ['search' => 'Categoría exclusiva para filtro', 'foreign_trade' => false]))
+                ->assertOk();
+            $rows = $this->read($response->baseResponse->getFile()->getPathname());
+            $this->assertCount(1, $rows);
+        }
+    }
+
     public function test_import_file_is_required_and_bad_headers_are_rejected(): void
     {
         Livewire::test(Import::class)->call('import')->assertHasErrors('file');
