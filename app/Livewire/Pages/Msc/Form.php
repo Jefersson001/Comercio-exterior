@@ -50,6 +50,8 @@ class Form extends Component
 
     public string $status = '';
 
+    public string $activeForeignTradeTab = 'phase-1';
+
     public function boot(): void
     {
         Gate::authorize('manage-msc');
@@ -99,6 +101,13 @@ class Form extends Component
                 $this->recalculateUnitsQty();
             }
         }
+    }
+
+    public function selectForeignTradeTab(string $tab): void
+    {
+        abort_unless(in_array($tab, ['phase-1', 'phase-2', 'phase-3', 'phase-4', 'notes'], true), 404);
+
+        $this->activeForeignTradeTab = $tab;
     }
 
     public function save(): void

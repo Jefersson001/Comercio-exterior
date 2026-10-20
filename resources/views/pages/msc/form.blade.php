@@ -48,19 +48,50 @@
                 @error('vessel_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 @if($vessels->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Carga los buques desde Configuración → Buques.</p>@endif
             </div>
-            <div class="sm:col-span-2 lg:col-span-3"><x-forms.input name="released" label="RELEASED" wire:model="released" maxlength="255" /></div>
-            @if($foreignTrade)
-                <div class="sm:col-span-2 lg:col-span-3">
-                    <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>
-                    <select id="category_id" wire:model="category_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
-                        <option value="">Sin categoría</option>
-                        @foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach
-                    </select>
-                    @error('category_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
-                    @if($categories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Crea las categorías en Configuración → Categorías.</p>@endif
-                </div>
-            @endif
+            <div><x-forms.input name="released" label="RELEASED" wire:model="released" maxlength="255" /></div>
         </fieldset>
+        @if($foreignTrade)
+            <div data-foreign-trade-notebook class="mt-8 min-w-0 rounded-2xl border border-slate-200 dark:border-white/10">
+                <div role="tablist" aria-label="Fases del comercio exterior" class="flex overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 dark:border-white/10 dark:bg-white/5">
+                    @foreach(['phase-1' => 'Fase 1', 'phase-2' => 'Fase 2', 'phase-3' => 'Fase 3', 'phase-4' => 'Fase 4', 'notes' => 'Notas'] as $tab => $label)
+                        <button
+                            type="button"
+                            id="foreign-trade-tab-{{ $tab }}"
+                            role="tab"
+                            aria-controls="foreign-trade-panel-{{ $tab }}"
+                            aria-selected="{{ $activeForeignTradeTab === $tab ? 'true' : 'false' }}"
+                            tabindex="{{ $activeForeignTradeTab === $tab ? '0' : '-1' }}"
+                            wire:click="selectForeignTradeTab('{{ $tab }}')"
+                            wire:loading.attr="disabled"
+                            @class([
+                                'shrink-0 border-b-2 border-transparent px-4 py-4 text-sm font-medium transition hover:text-indigo-600 focus-visible:outline-2 focus-visible:outline-indigo-500 dark:text-slate-400 dark:hover:text-indigo-300',
+                                'border-indigo-600 bg-white text-indigo-700 dark:border-indigo-400 dark:bg-slate-900 dark:text-indigo-300' => $activeForeignTradeTab === $tab,
+                                'text-slate-500 dark:text-slate-400' => $activeForeignTradeTab !== $tab,
+                            ])
+                        >
+                            {{ $label }}
+                        </button>
+                    @endforeach
+                </div>
+                <div
+                    id="foreign-trade-panel-{{ $activeForeignTradeTab }}"
+                    role="tabpanel"
+                    aria-labelledby="foreign-trade-tab-{{ $activeForeignTradeTab }}"
+                    data-foreign-trade-panel="{{ $activeForeignTradeTab }}"
+                    class="min-h-40 min-w-0 p-5 sm:p-6"
+                >
+                    @if($activeForeignTradeTab === 'phase-1')
+                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>
+                        <select id="category_id" wire:model="category_id" class="w-full max-w-xl rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                            <option value="">Sin categoría</option>
+                            @foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach
+                        </select>
+                        @error('category_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                        @if($categories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Crea las categorías en Configuración → Categorías.</p>@endif
+                    @endif
+                </div>
+            </div>
+        @endif
         <div class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
             @if($shipmentId)<button type="button" wire:click="delete" wire:confirm="¿Eliminar este registro MSC? Esta acción no se puede deshacer." wire:loading.attr="disabled" class="mr-auto rounded-xl border border-rose-200 px-5 py-3 font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10">Eliminar MSC</button>@endif
             <a href="{{ $this->mscRoute('index') }}" class="rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Cancelar</a>

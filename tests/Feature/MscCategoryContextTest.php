@@ -40,8 +40,31 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('data-href="'.route('foreign-trade.msc.edit', $shipment).'"', false)
             ->assertSee('href="'.route('foreign-trade.msc.create').'"', false);
         $this->get(route('foreign-trade.msc.edit', $shipment))->assertOk()->assertSee('id="category_id"', false)
+            ->assertSee('data-foreign-trade-notebook', false)
+            ->assertSee('role="tab"', false)
+            ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertSee('Fase 4')->assertSee('Notas')
+            ->assertSee('data-foreign-trade-panel="phase-1"', false)
             ->assertSee('Categoría exclusiva')->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
+        $this->get(route('msc.edit', $shipment))->assertDontSee('data-foreign-trade-notebook', false);
         $this->assertDatabaseCount('msc_shipments', 1);
+    }
+
+    public function test_foreign_trade_notebook_switches_pages_and_places_category_only_in_phase_one(): void
+    {
+        $category = Category::factory()->create();
+        $shipment = MscShipment::factory()->create(['category_id' => $category->id]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->assertSet('activeForeignTradeTab', 'phase-1')
+            ->assertSee('data-foreign-trade-panel="phase-1"', false)
+            ->assertSee('id="category_id"', false)
+            ->call('selectForeignTradeTab', 'phase-2')
+            ->assertSet('activeForeignTradeTab', 'phase-2')
+            ->assertSee('data-foreign-trade-panel="phase-2"', false)
+            ->assertDontSee('id="category_id"', false)
+            ->call('selectForeignTradeTab', 'notes')
+            ->assertSee('data-foreign-trade-panel="notes"', false)
+            ->assertDontSee('id="category_id"', false);
     }
 
     public function test_foreign_trade_can_assign_clear_and_validate_the_relation(): void
