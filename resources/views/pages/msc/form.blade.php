@@ -93,8 +93,9 @@
                                     <x-forms.input name="seabridge" label="SEABRIDGE" wire:model="seabridge" maxlength="255" />
                                     <x-forms.input name="sencamer" label="SENCAMER" wire:model="sencamer" maxlength="255" />
                                     <x-forms.input name="comex" label="COMEX" wire:model="comex" maxlength="255" />
-                                    <x-forms.input name="recognition_date" label="Fecha Reconocimiento" type="date" wire:model="recognition_date" />
                                     <x-forms.input name="receipt_date" label="Fecha Recepción" type="date" wire:model="receipt_date" />
+                                    <x-forms.input name="recognition_date" label="Fecha Reconocimiento" type="date" wire:model="recognition_date" />
+                                    
 
                                     <div>
                                         <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>
@@ -182,7 +183,7 @@
                                     <x-forms.input name="trasegado" label="TRASEGADO" wire:model="trasegado" maxlength="255" />
                                     <x-forms.input name="in_bond_date" label="In bond" type="date" wire:model="in_bond_date" />
                                     <x-forms.input name="free_days" label="Días libres" type="number" wire:model="free_days" min="0" max="2147483647" step="1" />
-                                    <x-forms.input name="delay_date" label="Días demora" type="date" wire:model="delay_date" />
+                                    <x-forms.input name="delay_date" label="Demora" type="date" wire:model="delay_date" />
                                     <x-forms.input name="legal_abandonment_date" label="Abandono legal" type="date" wire:model="legal_abandonment_date" />
                                 </div>
                             @elseif($activeForeignTradeTab === 'phase-2')

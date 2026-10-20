@@ -95,7 +95,7 @@ class MscFields
             'trasegado' => 'TRASEGADO',
             'in_bond_date' => 'In bond',
             'free_days' => 'Días libres',
-            'delay_date' => 'Días demora',
+            'delay_date' => 'Demora',
             'legal_abandonment_date' => 'Abandono legal',
             'registration_date' => 'Registro',
             'phase_two_recognition_date' => 'Reconocimiento',

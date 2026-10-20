@@ -46,7 +46,7 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('role="tab"', false)
             ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertDontSee('Fase 4')->assertSee('Notas')
             ->assertSee('data-foreign-trade-panel="phase-1"', false)
-            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor', 'Año', 'ETD', 'ETA VNZL', 'Puerto', 'TRASEGADO', 'In bond', 'Días libres', 'Días demora', 'Abandono legal'])
+            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor', 'Año', 'ETD', 'ETA VNZL', 'Puerto', 'TRASEGADO', 'In bond', 'Días libres', 'Demora', 'Abandono legal'])
             ->assertSee('Categoría exclusiva')->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
         $this->get(route('msc.edit', $shipment))->assertDontSee('data-foreign-trade-notebook', false);
         $this->assertDatabaseCount('msc_shipments', 1);
