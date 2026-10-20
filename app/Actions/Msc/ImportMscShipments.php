@@ -253,6 +253,10 @@ class ImportMscShipments
             return;
         }
 
+        $existing = $shipments[$this->billOfLadingKey($blMaster, $blHouse)] ?? null;
+        if ($existing?->exists && $existing->productLines()->count() > 1) {
+            throw new InvalidArgumentException("Fila {$number}: este embarque contiene varios productos. Edita sus líneas en Comercio Exterior → MSC; la plantilla de un producto no puede reemplazarlas.");
+        }
         $product = $catalogs['products'][$this->normalize($model)] ?? null;
         if ($product === null) {
             throw new InvalidArgumentException("Fila {$number}: el producto «{$model}» no existe. Regístralo en Productos antes de importar. No se guardaron cambios.");
@@ -301,6 +305,7 @@ class ImportMscShipments
         if ($shipment === null) {
             if (! $dryRun) {
                 $shipment = MscShipment::create($data);
+                $shipment->syncSingleProductLine();
             } else {
                 $shipment = new MscShipment($data);
             }
@@ -313,6 +318,7 @@ class ImportMscShipments
         $shipment->fill($data);
         if (! $dryRun && $shipment->exists) {
             $shipment->save();
+            $shipment->syncSingleProductLine();
         }
         if (! isset($importedKeys[$key])) {
             $updatedKeys[$key] = true;
@@ -353,6 +359,9 @@ class ImportMscShipments
         $shipment = $shipments[$key] ?? null;
         if ($shipment === null) {
             throw new InvalidArgumentException("Fila {$number}: el embarque no existe. Para crear uno, completa primero la pestaña Comercio Internacional con el mismo BL Master y BL House. No se guardaron cambios.");
+        }
+        if ($shipment->exists && $shipment->productLines()->count() > 1) {
+            throw new InvalidArgumentException("Fila {$number}: este embarque contiene varios productos. Edita sus líneas en Comercio Exterior → MSC; la plantilla de un producto no puede reemplazarlas.");
         }
 
         $data = ['bl_master' => $blMaster, 'bl_house' => $blHouse];
@@ -437,6 +446,10 @@ class ImportMscShipments
 
         $containerValue = $this->text($raw[$this->headerKey('CONTENEDOR')] ?? null);
         $colorValue = $this->text($raw[$this->headerKey('COLORES')] ?? null);
+        $categoryId = $data['category_id'] ?? $shipment->category_id;
+        if ($colorValue !== '' && Category::find($categoryId)?->allows_multiple_products) {
+            throw new InvalidArgumentException("Fila {$number}: las categorías de múltiples productos no permiten variantes. Retira el contenido de COLORES antes de importar.");
+        }
         $validatorRules = MscFields::rules($shipment->id, foreignTrade: true, blHouse: $blHouse);
         $validatorRules = array_intersect_key($validatorRules, $data);
         $validator = Validator::make($data, $validatorRules, attributes: MscFields::labels());
@@ -453,6 +466,7 @@ class ImportMscShipments
         $shipment->fill($data);
         if (! $dryRun) {
             $shipment->save();
+            $shipment->syncSingleProductLine();
             if ($containerLines !== null) {
                 $shipment->containers()->delete();
                 if ($containerLines !== []) {

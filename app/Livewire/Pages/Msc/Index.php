@@ -76,7 +76,7 @@ class Index extends Component
             'statuses' => MscShipmentStatus::options(),
             'billOfLadingStatuses' => MscBillOfLadingStatus::cases(),
             'categories' => $this->foreignTrade ? Category::query()->orderBy('name')->get() : collect(),
-            'shipments' => MscShipment::query()->with($this->foreignTrade ? ['product', 'category', 'factoryRecord', 'vessel'] : ['product', 'factoryRecord', 'vessel'])
+            'shipments' => MscShipment::query()->with($this->foreignTrade ? ['product', 'productLines.product', 'category', 'factoryRecord', 'vessel'] : ['product', 'productLines.product', 'factoryRecord', 'vessel'])
                 ->filters($this->status, $this->foreignTrade ? $this->status_bl : '', $this->foreignTrade ? $this->category_id : '')
                 ->search($this->search, $this->foreignTrade)->orderByDesc('id')->paginate(20),
         ])->layout('layouts.dashboard', ['title' => 'MSC', 'heading' => 'MSC']);

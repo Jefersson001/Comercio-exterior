@@ -53,8 +53,8 @@
         <div class="overflow-x-auto" wire:loading.class="opacity-60">
             <table class="w-full min-w-[105rem] text-left text-sm">
                 <thead class="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase dark:bg-slate-950/40 dark:text-slate-400"><tr>
-                    @foreach(\App\Support\MscFields::headers($foreignTrade) as $label)<th scope="col" class="px-5 py-4 font-semibold">{{ $label === 'Factory' ? 'Fábrica' : $label }}</th>@endforeach
-                    @if($foreignTrade)<th scope="col" class="px-5 py-4 font-semibold">Status BL</th>@endif
+                    @foreach(\App\Support\MscFields::headers() as $label)<th scope="col" class="px-5 py-4 font-semibold">{{ $label === 'Factory' ? 'Fábrica' : $label }}</th>@endforeach
+                    @if($foreignTrade)<th scope="col" class="px-5 py-4 font-semibold">Status BL</th><th scope="col" class="px-5 py-4 font-semibold">Categoría</th>@endif
                     <th scope="col" class="px-5 py-4 font-semibold">Acciones</th>
                 </tr></thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-white/5">
@@ -63,7 +63,7 @@
                             <td class="px-5 py-4"><a href="{{ $this->mscRoute('edit', ['shipment' => $shipment]) }}" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">{{ $shipment->id }}</a></td>
                             <td class="whitespace-nowrap px-5 py-4">{{ $shipment->etd->format('d/m/Y') }}</td><td class="whitespace-nowrap px-5 py-4">{{ $shipment->eta->format('d/m/Y') }}</td>
                             <td class="whitespace-pre-line px-5 py-4 font-medium">{{ $shipment->bl_master }}</td><td class="whitespace-pre-line px-5 py-4">{{ $shipment->bl_house ?: '—' }}</td><td class="whitespace-pre-line px-5 py-4">{{ $shipment->factoryRecord?->name ?? '—' }}</td>
-                            <td class="px-5 py-4">{{ $shipment->product->name }}</td><td class="px-5 py-4">{{ $shipment->container_qty }}</td><td class="px-5 py-4">{{ $shipment->totalUnits() ?? '—' }}</td><td class="whitespace-nowrap px-5 py-4">{{ $shipment->free_time }} días</td>
+                            <td class="whitespace-pre-line px-5 py-4">{{ $shipment->productNames() }}</td><td class="px-5 py-4">{{ $shipment->container_qty }}</td><td class="px-5 py-4">{{ $shipment->totalUnits() ?? '—' }}</td><td class="whitespace-nowrap px-5 py-4">{{ $shipment->free_time }} días</td>
                             <td class="px-5 py-4">{{ $shipment->vessel?->name ?? '—' }}</td><td class="px-5 py-4">{{ $shipment->released ?: '—' }}</td>
                             <td class="whitespace-nowrap px-5 py-4"><span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">{{ $shipment->status?->value ?? 'Sin estado' }}</span></td>
                             @if($foreignTrade)

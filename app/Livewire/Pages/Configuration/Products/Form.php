@@ -51,11 +51,17 @@ class Form extends Component
 
     public function addVariant(): void
     {
+        if (! $this->variantsEnabled()) {
+            return;
+        }
         $this->variants[] = ['id' => null, 'color' => ''];
     }
 
     public function removeVariant(int $index): void
     {
+        if (! $this->variantsEnabled()) {
+            return;
+        }
         unset($this->variants[$index]);
         $this->variants = array_values($this->variants);
     }
@@ -65,11 +71,12 @@ class Form extends Component
         Gate::authorize('manage-products');
         $this->name = trim($this->name);
         $this->units_per_container = trim($this->units_per_container);
+        $variantsEnabled = $this->variantsEnabled();
         $existingVariants = $this->productId === null
             ? collect()
             : Product::findOrFail($this->productId)->variants()->get()->keyBy('id');
 
-        foreach ($this->variants as $index => $variant) {
+        foreach ($variantsEnabled ? $this->variants : [] as $index => $variant) {
             if (isset($variant['color']) && is_string($variant['color'])) {
                 $this->variants[$index]['color'] = trim($variant['color']);
             }
@@ -91,6 +98,13 @@ class Form extends Component
             'variants.*.id' => ['nullable', 'integer'],
             'variants.*.color' => ['required', 'string', 'max:255', 'distinct:ignore_case'],
         ];
+        if (! $variantsEnabled) {
+            foreach (array_keys($rules) as $field) {
+                if ($field === 'variants' || str_starts_with($field, 'variants.')) {
+                    unset($rules[$field]);
+                }
+            }
+        }
 
         $data = $this->validate($rules, [
             'name.required' => 'Ingresa el nombre del producto.',
@@ -100,7 +114,7 @@ class Form extends Component
             'variants.*.color.distinct' => 'No repitas el color en este producto.',
         ]);
 
-        if ($this->productId !== null) {
+        if ($variantsEnabled && $this->productId !== null) {
             $submittedVariantIds = collect($data['variants'])->pluck('id')->filter()->map(fn ($id): int => (int) $id);
             $removedVariantIds = Product::findOrFail($this->productId)->variants()->pluck('id')->diff($submittedVariantIds);
 
@@ -111,7 +125,7 @@ class Form extends Component
             }
         }
 
-        $product = DB::transaction(function () use ($data): Product {
+        $product = DB::transaction(function () use ($data, $variantsEnabled): Product {
             $product = $this->productId ? Product::findOrFail($this->productId) : new Product;
             $product->name = $data['name'];
             $product->category_id = $data['category_id'];
@@ -119,6 +133,9 @@ class Form extends Component
                 ? null
                 : (int) $data['units_per_container'];
             $product->save();
+            if (! $variantsEnabled) {
+                return $product;
+            }
 
             $savedVariantIds = [];
             foreach ($data['variants'] as $variantData) {
@@ -151,7 +168,7 @@ class Form extends Component
         Gate::authorize('manage-products');
         abort_if($this->productId === null, 404);
         $product = Product::findOrFail($this->productId);
-        if ($product->mscShipments()->exists()) {
+        if ($product->mscShipments()->exists() || $product->shipmentLines()->exists()) {
             $this->addError('name', 'No se puede eliminar un producto utilizado en MSC.');
 
             return;
@@ -166,7 +183,12 @@ class Form extends Component
     {
         $title = $this->productId ? 'Editar producto' : 'Crear producto';
 
-        return view('pages.configuration.products.form', ['categories' => Category::query()->orderBy('name')->get()])
+        return view('pages.configuration.products.form', ['categories' => Category::query()->orderBy('name')->get(), 'variantsEnabled' => $this->variantsEnabled()])
             ->layout('layouts.dashboard', ['title' => $title, 'heading' => $title]);
+    }
+
+    private function variantsEnabled(): bool
+    {
+        return ! (Category::find($this->category_id)?->allows_multiple_products ?? false);
     }
 }

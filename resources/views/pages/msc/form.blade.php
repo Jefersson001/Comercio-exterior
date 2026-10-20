@@ -30,6 +30,7 @@
                 @error('factory_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 @if($factories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Carga las fábricas desde Configuración → Fábricas.</p>@endif
             </div>
+            @if(! $foreignTrade && ! $hasMultipleProducts)
             <div>
                 <label for="product_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Model *</label>
                 <select id="product_id" wire:model.live="product_id" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
@@ -44,6 +45,7 @@
                 <input id="units_qty" name="units_qty" type="number" wire:model.live="units_qty" min="0" max="2147483647" step="1" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
                 @error('units_qty')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
             </div>
+            @endif
             <x-forms.input name="free_time" label="Free time (días) *" type="number" wire:model="free_time" min="0" max="2147483647" step="1" required />
             <div>
                 <label for="vessel_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Buque</label>
@@ -56,6 +58,9 @@
             </div>
             <div><x-forms.input name="released" label="RELEASED" wire:model="released" maxlength="255" /></div>
         </fieldset>
+        @if($foreignTrade || $hasMultipleProducts)
+            @include('pages.msc.product-lines')
+        @endif
         @if($foreignTrade)
             <div data-foreign-trade-notebook class="mt-8 min-w-0 rounded-2xl border border-slate-200 dark:border-white/10">
                 <div role="tablist" aria-label="Fases del comercio exterior" class="flex overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 dark:border-white/10 dark:bg-white/5">
@@ -97,15 +102,7 @@
                                     <x-forms.input name="recognition_date" label="Fecha Reconocimiento" type="date" wire:model="recognition_date" />
                                     
 
-                                    <div>
-                                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>
-                                        <select id="category_id" wire:model="category_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
-                                            <option value="">Sin categoría</option>
-                                            @foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach
-                                        </select>
-                                        @error('category_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
-                                        @if($categories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Crea las categorías en Configuración → Categorías.</p>@endif
-                                    </div>
+
 
                                     <section class="sm:col-span-2 lg:col-span-3">
                                         <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
@@ -136,6 +133,7 @@
                                         @error('containerLines')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                                     </section>
 
+                                    @if($variantsEnabled)
                                     <section class="sm:col-span-2 lg:col-span-3">
                                         <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
                                             <div class="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
@@ -150,7 +148,7 @@
                                                         <select id="product-variant-line-{{ $index }}" wire:model="productVariantLines.{{ $index }}.product_variant_id" class="w-full border-0 bg-transparent px-0 py-2.5 text-sm text-slate-950 outline-none focus:ring-0 dark:text-white">
                                                             <option value="">Selecciona color...</option>
                                                             @foreach($productVariants as $variant)
-                                                                <option value="{{ $variant->id }}">{{ $selectedProduct?->name }} ({{ $variant->color }})</option>
+                                                                <option value="{{ $variant->id }}">{{ $variant->product->name }} ({{ $variant->color }})</option>
                                                             @endforeach
                                                         </select>
                                                         @error("productVariantLines.$index.product_variant_id")<p role="alert" class="pb-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
@@ -175,6 +173,7 @@
                                         </div>
                                         @error('productVariantLines')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                                     </section>
+                                    @endif
 
                                     <x-forms.input name="shipment_year" label="Año" type="number" wire:model="shipment_year" min="1000" max="9999" step="1" />
                                     <x-forms.input name="etd_vnzl" label="ETD" type="date" wire:model="etd_vnzl" />

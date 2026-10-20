@@ -100,6 +100,11 @@ class MscShipment extends Model
 
     public function totalUnits(): ?int
     {
+        if ($this->productLines->isNotEmpty()) {
+            $totals = $this->productLines->map(fn (MscShipmentProduct $line): ?int => $line->totalUnits());
+
+            return $totals->contains(null) ? null : (int) $totals->sum();
+        }
         if ($this->units_qty !== null) {
             return $this->units_qty;
         }
@@ -107,6 +112,24 @@ class MscShipment extends Model
         $unitsPerContainer = $this->product?->units_per_container;
 
         return $unitsPerContainer === null ? null : $unitsPerContainer * $this->container_qty;
+    }
+
+    /** @return HasMany<MscShipmentProduct, $this> */
+    public function productLines(): HasMany
+    {
+        return $this->hasMany(MscShipmentProduct::class)->orderBy('id');
+    }
+
+    public function productNames(): string
+    {
+        return $this->productLines->isEmpty() ? $this->product->name : $this->productLines->map(fn (MscShipmentProduct $line): string => $line->product->name)->implode("\n");
+    }
+
+    public function syncSingleProductLine(): void
+    {
+        $this->productLines()->delete();
+        $this->productLines()->create(['product_id' => $this->product_id, 'container_qty' => $this->container_qty, 'units_qty' => $this->units_qty]);
+        $this->unsetRelation('productLines');
     }
 
     /** @param Builder<MscShipment> $query */
@@ -133,6 +156,7 @@ class MscShipment extends Model
                 ->orWhereHas('vessel', fn (Builder $vessel) => $vessel->where('name', 'like', $term))
                 ->orWhere('released', 'like', $term)
                 ->orWhereHas('product', fn (Builder $product) => $product->where('name', 'like', $term));
+            $query->orWhereHas('productLines.product', fn (Builder $product) => $product->where('name', 'like', $term));
             if ($includeCategory) {
                 $query->orWhereHas('category', fn (Builder $category) => $category->where('name', 'like', $term));
             }

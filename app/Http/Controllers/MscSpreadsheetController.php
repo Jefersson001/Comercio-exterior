@@ -76,8 +76,8 @@ class MscSpreadsheetController extends Controller
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         $isForeignTradeRoute = $request->routeIs('foreign-trade.msc.*');
         $relations = $isForeignTradeRoute
-            ? ['product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant']
-            : ['product', 'factoryRecord', 'vessel'];
+            ? ['product', 'productLines.product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant']
+            : ['product', 'productLines.product', 'factoryRecord', 'vessel'];
         $shipments = MscShipment::query()->with($relations)
             ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')
             ->search(trim((string) $request->input('search', '')), $foreignTradeContext)->orderBy('id')->lazy(500);
@@ -100,7 +100,7 @@ class MscSpreadsheetController extends Controller
         ]);
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         $shipments = MscShipment::query()
-            ->with(['product', 'factoryRecord'])
+            ->with(['product', 'productLines.product', 'factoryRecord'])
             ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')
             ->search(trim((string) $request->input('search', '')), $foreignTradeContext)
             ->orderBy('id')
@@ -125,7 +125,7 @@ class MscSpreadsheetController extends Controller
                 $writer->addRow(Row::fromValuesWithStyles($headers, $headerStyles));
                 foreach ($shipments as $shipment) {
                     $containers = $shipment->containers->pluck('name')->implode("\n");
-                    $colors = $shipment->productVariantLines
+                    $colors = $shipment->category?->allows_multiple_products ? '' : $shipment->productVariantLines
                         ->map(fn ($line): string => ($line->quantity > 0 ? $line->quantity.' ' : '').$line->productVariant->color)
                         ->implode(' // ');
                     $date = fn (?\DateTimeInterface $value): string => $value?->format('Y-m-d') ?? '';
@@ -142,7 +142,7 @@ class MscSpreadsheetController extends Controller
                         $containers,
                         $shipment->container_qty,
                         $shipment->category?->name ?? '',
-                        $shipment->product->name,
+                        $shipment->productNames(),
                         $shipment->factoryRecord?->name ?? '',
                         $shipment->totalUnits() ?? '',
                         $shipment->vessel?->name ?? '',
@@ -182,6 +182,7 @@ class MscSpreadsheetController extends Controller
                     );
                     $writer->addRow(new Row($cells));
                 }
+                $this->writeProductDetails($writer, $shipments);
             } finally {
                 $writer->close();
             }
@@ -229,7 +230,7 @@ class MscSpreadsheetController extends Controller
                         $shipment->bl_master ?? '',
                         $shipment->bl_house ?? '',
                         $shipment->container_qty,
-                        $shipment->product->name,
+                        $shipment->productNames(),
                         $shipment->factoryRecord?->name ?? '',
                         $shipment->totalUnits() ?? '',
                         implode("\n", $notes),
@@ -246,6 +247,7 @@ class MscSpreadsheetController extends Controller
                     );
                     $writer->addRow(new Row($cells));
                 }
+                $this->writeProductDetails($writer, $shipments);
             } finally {
                 $writer->close();
             }
@@ -274,7 +276,7 @@ class MscSpreadsheetController extends Controller
                     $cells = [
                         new NumericCell($shipment->id), new StringCell($shipment->etd->format('Y-m-d')),
                         new StringCell($shipment->eta->format('Y-m-d')), new StringCell($shipment->bl_master),
-                        new StringCell($shipment->bl_house), new StringCell($shipment->factoryRecord?->name ?? ''), new StringCell($shipment->product->name),
+                        new StringCell($shipment->bl_house), new StringCell($shipment->factoryRecord?->name ?? ''), new StringCell($shipment->productNames()),
                         new NumericCell($shipment->container_qty),
                         $shipment->totalUnits() === null ? new StringCell('') : new NumericCell($shipment->totalUnits()),
                         new NumericCell($shipment->free_time),
@@ -283,6 +285,7 @@ class MscSpreadsheetController extends Controller
                     ];
                     $writer->addRow(new Row($cells));
                 }
+                $this->writeProductDetails($writer, $shipments);
             } finally {
                 $writer->close();
             }
@@ -295,6 +298,25 @@ class MscSpreadsheetController extends Controller
         clearstatcache(true, $path);
 
         return response()->download($path, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])->deleteFileAfterSend();
+    }
+
+    /** @param iterable<MscShipment> $shipments */
+    private function writeProductDetails(Writer $writer, iterable $shipments): void
+    {
+        $sheetCreated = false;
+        foreach ($shipments as $shipment) {
+            if ($shipment->productLines->count() < 2) {
+                continue;
+            }
+            if (! $sheetCreated) {
+                $writer->addNewSheetAndMakeItCurrent()->setName('Detalle productos');
+                $writer->addRow(Row::fromValues(['No.', 'BL Master', 'BL House', 'Model', 'Cant contenedores', 'Cant Unidades']));
+                $sheetCreated = true;
+            }
+            foreach ($shipment->productLines as $line) {
+                $writer->addRow(Row::fromValues([$shipment->id, $shipment->bl_master ?? '', $shipment->bl_house ?? '', $line->product->name, $line->container_qty, $line->totalUnits() ?? '']));
+            }
+        }
     }
 
     /** @return array<int, Style> */

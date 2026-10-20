@@ -24,6 +24,32 @@ class ProductManagementTest extends TestCase
         return User::factory()->create(['role' => UserRole::Administrator]);
     }
 
+    public function test_multiple_product_categories_hide_variants_and_ignore_hidden_changes_without_deleting_history(): void
+    {
+        $this->actingAs($this->administrator());
+        $multiple = Category::factory()->create(['allows_multiple_products' => true]);
+        $individual = Category::factory()->create(['allows_multiple_products' => false]);
+        $product = Product::factory()->create(['category_id' => $individual->id]);
+        $variant = ProductVariant::create(['product_id' => $product->id, 'color' => 'Color histórico']);
+        Livewire::test(Form::class, ['product' => $product])
+            ->assertSee('Variantes por color')->set('category_id', $multiple->id)
+            ->assertDontSee('Variantes por color')
+            ->call('addVariant')->assertCount('variants', 1)
+            ->call('removeVariant', 0)->assertCount('variants', 1)
+            ->set('variants', [['id' => null, 'color' => 'Color no permitido']])
+            ->call('save')->assertHasNoErrors();
+        $this->assertSame($multiple->id, $product->fresh()->category_id);
+        $this->assertSame('Color histórico', $variant->fresh()->color);
+        $this->assertSame(1, $product->variants()->count());
+        $this->get(route('configuration.products.index'))->assertOk()->assertSee('No aplica')->assertDontSee('Color histórico');
+        Livewire::test(Form::class, ['product' => $product->fresh()])
+            ->set('category_id', $individual->id)->assertSee('Variantes por color')
+            ->assertSet('variants', [['id' => $variant->id, 'color' => 'Color histórico']]);
+        Livewire::test(Form::class)->set('name', 'Producto sin variantes')->set('category_id', $multiple->id)
+            ->set('variants', [['color' => 'No permitido']])->call('save')->assertHasNoErrors();
+        $this->assertSame(0, Product::where('name', 'Producto sin variantes')->firstOrFail()->variants()->count());
+    }
+
     public function test_product_information_is_limited_to_name(): void
     {
         $this->assertEqualsCanonicalizing(['id', 'name', 'units_per_container', 'category_id', 'created_at', 'updated_at'], Schema::getColumnListing('products'));

@@ -32,10 +32,19 @@ class MscCategoryContextTest extends TestCase
         $this->actingAs(User::factory()->create());
     }
 
+    private function foreignShipment(array $attributes = []): MscShipment
+    {
+        $categoryId = $attributes['category_id'] ?? Category::factory()->create()->id;
+        $product = isset($attributes['product_id']) ? Product::findOrFail($attributes['product_id']) : Product::factory()->create();
+        $product->update(['category_id' => $categoryId]);
+
+        return MscShipment::factory()->create(array_replace(['category_id' => $categoryId, 'product_id' => $product->id], $attributes));
+    }
+
     public function test_category_is_visible_only_in_foreign_trade_tree_and_form(): void
     {
         $category = Category::factory()->create(['name' => 'Categoría exclusiva']);
-        $shipment = MscShipment::factory()->create(['category_id' => $category->id]);
+        $shipment = $this->foreignShipment(['category_id' => $category->id]);
         $this->get(route('msc.index'))->assertOk()->assertDontSee('Categoría exclusiva');
         $this->get(route('msc.edit', $shipment))->assertOk()->assertDontSee('id="category_id"', false);
         $this->get(route('foreign-trade.msc.index'))->assertOk()->assertSee('Categoría exclusiva')
@@ -46,16 +55,16 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('role="tab"', false)
             ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertDontSee('Fase 4')->assertSee('Notas')
             ->assertSee('data-foreign-trade-panel="phase-1"', false)
-            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor', 'Año', 'ETD', 'ETA VNZL', 'Puerto', 'TRASEGADO', 'In bond', 'Días libres', 'Demora', 'Abandono legal'])
+            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Recepción', 'Fecha Reconocimiento', 'Contenedor', 'Año', 'ETD', 'ETA VNZL', 'Puerto', 'TRASEGADO', 'In bond', 'Días libres', 'Demora', 'Abandono legal'])
             ->assertSee('Categoría exclusiva')->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
         $this->get(route('msc.edit', $shipment))->assertDontSee('data-foreign-trade-notebook', false);
         $this->assertDatabaseCount('msc_shipments', 1);
     }
 
-    public function test_foreign_trade_notebook_switches_pages_and_places_category_only_in_phase_one(): void
+    public function test_foreign_trade_notebook_keeps_product_category_visible_across_tabs(): void
     {
         $category = Category::factory()->create();
-        $shipment = MscShipment::factory()->create(['category_id' => $category->id]);
+        $shipment = $this->foreignShipment(['category_id' => $category->id]);
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->assertSet('activeForeignTradeTab', 'phase-1')
@@ -65,12 +74,12 @@ class MscCategoryContextTest extends TestCase
             ->assertSet('activeForeignTradeTab', 'phase-2')
             ->assertSee('data-foreign-trade-panel="phase-2"', false)
             ->assertSeeInOrder(['name=\"registration_date\"', 'name=\"phase_two_recognition_date\"', 'name=\"validation_date\"', 'name=\"plant_receipt_date\"', 'name=\"location\"', 'name=\"return_date\"'], false)
-            ->assertDontSee('id="category_id"', false)
+            ->assertSee('id="category_id"', false)
             ->call('selectForeignTradeTab', 'phase-3')
             ->assertSet('activeForeignTradeTab', 'phase-3')
             ->assertSee('data-foreign-trade-panel="phase-3"', false)
             ->assertSeeInOrder(['name=\"original_docs_receipt_date\"', 'name=\"aa_instructions_sent_date\"', 'name=\"bl_release_date\"', 'name=\"sencamer_request_date\"', 'name=\"sencamer_receipt_date\"', 'name=\"comex_request_date\"', 'name=\"comex_receipt_date\"'], false)
-            ->assertDontSee('id="category_id"', false)
+            ->assertSee('id="category_id"', false)
             ->call('selectForeignTradeTab', 'notes')
             ->assertSee('data-foreign-trade-panel="notes"', false)
             ->assertSee('STATUS AGENTE DE ADUANA')
@@ -78,12 +87,12 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('<textarea id="customs_agent_status"', false)
             ->assertSee('<textarea id="customs_agent_observation"', false)
             ->assertDontSee('Fase 4')
-            ->assertDontSee('id="category_id"', false);
+            ->assertSee('id="category_id"', false);
     }
 
     public function test_customs_agent_notes_save_reload_and_validate(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
         $status = str_repeat('Estado revisado.', 30);
         $observation = 'Pendiente de confirmación del agente.';
 
@@ -113,13 +122,12 @@ class MscCategoryContextTest extends TestCase
     public function test_foreign_trade_phase_one_saves_details_and_multiple_container_lines(): void
     {
         $category = Category::factory()->create();
-        $product = Product::factory()->create();
+        $product = Product::factory()->create(['category_id' => $category->id]);
         Livewire::test(Form::class, ['foreignTrade' => true])
             ->set('etd', '2026-10-01')
             ->set('eta', '2026-11-01')
             ->set('bl_master', 'PHASE-ONE-BL')
-            ->set('product_id', $product->id)
-            ->set('container_qty', '2')
+            ->set('productLines', [['product_id' => $product->id, 'container_qty' => '2', 'units_qty' => '']])
             ->set('free_time', '21')
             ->set('exp_number', 'EXP-2026-A1')
             ->set('dua_intr', 'DUA/INT-82B')
@@ -168,7 +176,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_foreign_trade_phase_two_saves_and_reloads_its_dates_and_location(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->call('selectForeignTradeTab', 'phase-2')
@@ -201,7 +209,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_foreign_trade_phase_three_saves_and_reloads_all_dates(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->call('selectForeignTradeTab', 'phase-3')
@@ -237,7 +245,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_foreign_trade_phase_one_can_edit_and_remove_container_lines(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
         $shipment->containers()->createMany([
             ['name' => 'CONT-ONE'],
             ['name' => 'CONT-TWO'],
@@ -258,7 +266,7 @@ class MscCategoryContextTest extends TestCase
         $product = Product::factory()->create(['name' => 'Camisa']);
         $red = ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo']);
         $blue = ProductVariant::create(['product_id' => $product->id, 'color' => 'Azul']);
-        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment = $this->foreignShipment(['product_id' => $product->id]);
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->call('addProductVariantLine')
@@ -295,7 +303,7 @@ class MscCategoryContextTest extends TestCase
         $product = Product::factory()->create();
         $otherProduct = Product::factory()->create();
         $variant = ProductVariant::create(['product_id' => $otherProduct->id, 'color' => 'Rojo']);
-        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment = $this->foreignShipment(['product_id' => $product->id]);
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->call('addProductVariantLine')
@@ -312,11 +320,12 @@ class MscCategoryContextTest extends TestCase
         $product = Product::factory()->create();
         $variant = ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo']);
         $otherProduct = Product::factory()->create();
-        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment = $this->foreignShipment(['product_id' => $product->id]);
         $shipment->productVariantLines()->create(['product_variant_id' => $variant->id, 'quantity' => 5]);
+        $otherProduct->update(['category_id' => $shipment->category_id]);
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
-            ->set('product_id', $otherProduct->id)
+            ->set('productLines.0.product_id', $otherProduct->id)
             ->assertSet('productVariantLines', [])
             ->call('save')
             ->assertHasNoErrors();
@@ -328,7 +337,7 @@ class MscCategoryContextTest extends TestCase
     {
         $product = Product::factory()->create();
         $variant = ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo']);
-        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment = $this->foreignShipment(['product_id' => $product->id]);
         $shipment->productVariantLines()->create(['product_variant_id' => $variant->id, 'quantity' => 7]);
 
         $this->get(route('msc.edit', $shipment))->assertDontSee('Variante del producto');
@@ -343,7 +352,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_international_form_does_not_expose_or_overwrite_foreign_trade_phase_one_data(): void
     {
-        $shipment = MscShipment::factory()->create([
+        $shipment = $this->foreignShipment([
             'exp_number' => 'FOREIGN-EXP',
             'recognition_date' => '2026-10-18',
             'shipment_year' => '2026',
@@ -418,7 +427,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_foreign_trade_phase_three_validates_every_field_as_a_date(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
         $fields = [
             'original_docs_receipt_date',
             'aa_instructions_sent_date',
@@ -438,7 +447,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_foreign_trade_phase_two_validates_date_fields_and_location_length(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->set('registration_date', 'invalid-date')
@@ -460,7 +469,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_foreign_trade_phase_one_validates_year_dates_and_free_days(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->set('shipment_year', '20A6')
@@ -470,23 +479,24 @@ class MscCategoryContextTest extends TestCase
             ->assertHasErrors(['shipment_year', 'etd_vnzl', 'free_days']);
     }
 
-    public function test_foreign_trade_can_assign_clear_and_validate_the_relation(): void
+    public function test_foreign_trade_requires_a_valid_category_matching_the_product(): void
     {
         $category = Category::factory()->create();
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
+        $shipment->product->update(['category_id' => $category->id]);
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->set('category_id', $category->id)->call('save')->assertHasNoErrors()->assertRedirect(route('foreign-trade.msc.index'));
         $this->assertSame($category->id, $shipment->fresh()->category_id);
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->set('category_id', 999999)->call('save')->assertHasErrors('category_id');
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
-            ->set('category_id', null)->call('save')->assertHasNoErrors();
-        $this->assertNull($shipment->fresh()->category_id);
+            ->set('category_id', null)->call('save')->assertHasErrors('category_id');
+        $this->assertSame($category->id, $shipment->fresh()->category_id);
     }
 
     public function test_status_bl_is_selectable_and_visible_only_in_foreign_trade(): void
     {
-        $shipment = MscShipment::factory()->create();
+        $shipment = $this->foreignShipment();
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->assertSet('status_bl', '')
@@ -511,7 +521,7 @@ class MscCategoryContextTest extends TestCase
 
     public function test_international_updates_preserve_status_bl_and_exterior_rejects_unknown_values(): void
     {
-        $shipment = MscShipment::factory()->create(['status_bl' => MscBillOfLadingStatus::Released]);
+        $shipment = $this->foreignShipment(['status_bl' => MscBillOfLadingStatus::Released]);
 
         Livewire::test(Form::class, ['shipment' => $shipment])
             ->assertSet('status_bl', '')
@@ -531,7 +541,7 @@ class MscCategoryContextTest extends TestCase
         $category = Category::factory()->create();
         $other = Category::factory()->create();
         $factory = Factory::factory()->create();
-        $shipment = MscShipment::factory()->create(['category_id' => $category->id, 'factory_id' => $factory->id]);
+        $shipment = $this->foreignShipment(['category_id' => $category->id, 'factory_id' => $factory->id]);
         Livewire::test(Form::class, ['shipment' => $shipment])->assertSet('category_id', null)
             ->set('category_id', $other->id)->call('save')->assertHasNoErrors();
         $this->assertSame($category->id, $shipment->fresh()->category_id);
@@ -547,7 +557,7 @@ class MscCategoryContextTest extends TestCase
     public function test_context_and_links_persist_after_search_and_category_search_is_exterior_only(): void
     {
         $category = Category::factory()->create(['name' => 'Specific Category']);
-        $shipment = MscShipment::factory()->create(['category_id' => $category->id]);
+        $shipment = $this->foreignShipment(['category_id' => $category->id]);
         Livewire::test(Index::class, ['foreignTrade' => true])->set('search', 'Specific Category')
             ->assertSet('foreignTrade', true)->assertSee($shipment->bl_master)
             ->assertSee('href="'.route('foreign-trade.msc.import').'"', false);
@@ -585,7 +595,7 @@ class MscCategoryContextTest extends TestCase
     public function test_template_has_context_tabs_and_reports_use_their_context_columns(): void
     {
         $category = Category::factory()->create(['name' => 'Spare parts']);
-        MscShipment::factory()->create(['category_id' => $category->id]);
+        $this->foreignShipment(['category_id' => $category->id]);
         $internationalTemplate = $this->downloadRows('msc.template', 'Comercio Internacional');
         $foreignTradeTemplate = $this->downloadRows('msc.template', 'Comercio Exterior');
         $internationalReport = $this->downloadRows('msc.export');

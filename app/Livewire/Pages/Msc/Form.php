@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Msc;
 
+use App\Actions\Msc\PrepareShipmentProducts;
 use App\Concerns\InteractsWithMscContext;
 use App\Models\Category;
 use App\Models\Factory;
@@ -127,6 +128,21 @@ class Form extends Component
     /** @var array<int, array{product_variant_id: int|string|null, quantity: int|string|null}> */
     public array $productVariantLines = [];
 
+    /** @var array<int, array{product_id: int|string|null, container_qty: int|string|null, units_qty: int|string|null}> */
+    public array $productLines = [];
+
+    /** @var array<int, bool> */
+    #[Locked]
+    public array $lineUnitsOverridden = [];
+
+    public ?int $pendingCategoryId = null;
+
+    #[Locked]
+    public bool $confirmingCategoryChange = false;
+
+    #[Locked]
+    public bool $hasMultipleProducts = false;
+
     public function boot(): void
     {
         Gate::authorize('manage-msc');
@@ -143,8 +159,18 @@ class Form extends Component
             $this->bl_house = $shipment->bl_house ?? '';
             $this->factory_id = $shipment->factory_id;
             $this->product_id = $shipment->product_id;
+            $this->hasMultipleProducts = $shipment->productLines()->count() > 1;
+            $this->productLines = $shipment->productLines->map(fn ($line): array => [
+                'product_id' => $line->product_id,
+                'container_qty' => (string) $line->container_qty,
+                'units_qty' => $line->units_qty === null ? '' : (string) $line->units_qty,
+            ])->all();
+            if ($this->productLines === []) {
+                $this->productLines = [['product_id' => $shipment->product_id, 'container_qty' => (string) $shipment->container_qty, 'units_qty' => $shipment->units_qty === null ? '' : (string) $shipment->units_qty]];
+            }
             if ($this->foreignTrade) {
                 $this->category_id = $shipment->category_id;
+                $this->pendingCategoryId = $this->category_id;
                 $this->status_bl = $shipment->status_bl?->value ?? '';
                 $this->exp_number = $shipment->exp_number ?? '';
                 $this->dua_intr = $shipment->dua_intr ?? '';
@@ -192,6 +218,11 @@ class Form extends Component
             $this->container_qty = (string) $shipment->container_qty;
             $this->unitsQtyOverridden = $shipment->units_qty !== null;
             $this->units_qty = $shipment->units_qty === null ? '' : (string) $shipment->units_qty;
+            if (! $this->foreignTrade && $shipment->productLines->count() === 1) {
+                $lineUnits = $shipment->productLines->first()->units_qty;
+                $this->unitsQtyOverridden = $lineUnits !== null;
+                $this->units_qty = $lineUnits === null ? '' : (string) $lineUnits;
+            }
             $this->free_time = (string) $shipment->free_time;
             $this->vessel_id = $shipment->vessel_id;
             $this->released = $shipment->released ?? '';
@@ -200,10 +231,46 @@ class Form extends Component
         if (! $this->unitsQtyOverridden) {
             $this->recalculateUnitsQty();
         }
+        $this->initializeProductLineQuantities();
     }
 
     public function updated(string $property, mixed $value = null): void
     {
+        if ($this->foreignTrade && $property === 'pendingCategoryId') {
+            $this->confirmingCategoryChange = $this->pendingCategoryId !== $this->category_id && $this->productLines !== [];
+            if (! $this->confirmingCategoryChange) {
+                $this->applyCategoryChange();
+            }
+
+            return;
+        }
+        if ($this->foreignTrade && $property === 'productLines') {
+            $this->initializeProductLineQuantities();
+
+            return;
+        }
+        if ($this->foreignTrade && preg_match('/^productLines\.(\d+)\.(product_id|container_qty|units_qty)$/', $property, $matches)) {
+            $index = (int) $matches[1];
+            if (! isset($this->productLines[$index])) {
+                return;
+            }
+            if ($matches[2] === 'product_id') {
+                $this->pruneProductVariants();
+            }
+            if ($matches[2] === 'units_qty') {
+                $this->lineUnitsOverridden[$index] = trim((string) $value) !== '';
+                if ($this->lineUnitsOverridden[$index]) {
+                    $this->recalculateProductLineContainers($index);
+                } else {
+                    $this->recalculateProductLineUnits($index);
+                }
+            } else {
+                $this->lineUnitsOverridden[$index] = false;
+                $this->recalculateProductLineUnits($index);
+            }
+
+            return;
+        }
         if (in_array($property, ['product_id', 'container_qty'], true)) {
             if ($property === 'product_id' && $this->foreignTrade) {
                 $this->productVariantLines = [];
@@ -223,6 +290,62 @@ class Form extends Component
                 $this->recalculateUnitsQty();
             }
         }
+    }
+
+    public function applyCategoryChange(): void
+    {
+        abort_unless($this->foreignTrade, 404);
+        $this->validate(['pendingCategoryId' => ['nullable', 'integer', 'exists:categories,id']]);
+        if ($this->pendingCategoryId !== $this->category_id) {
+            $ids = Product::where('category_id', $this->pendingCategoryId)->pluck('id')->all();
+            $retainedLines = [];
+            $retainedOverrides = [];
+            foreach ($this->productLines as $index => $line) {
+                if (in_array((int) ($line['product_id'] ?? 0), $ids, true)) {
+                    $retainedLines[] = $line;
+                    $retainedOverrides[] = $this->lineUnitsOverridden[$index] ?? true;
+                }
+            }
+            $this->productLines = $retainedLines;
+            $this->lineUnitsOverridden = $retainedOverrides;
+            $this->category_id = $this->pendingCategoryId;
+            $this->productVariantLines = [];
+        }
+        $this->confirmingCategoryChange = false;
+        $this->resetValidation();
+    }
+
+    public function cancelCategoryChange(): void
+    {
+        $this->pendingCategoryId = $this->category_id;
+        $this->confirmingCategoryChange = false;
+    }
+
+    public function addProductLine(): void
+    {
+        abort_unless($this->foreignTrade, 404);
+        $category = Category::find($this->category_id);
+        if ($category === null || (! $category->allows_multiple_products && $this->productLines !== []) || count($this->productLines) >= 100) {
+            return;
+        }
+        $this->productLines[] = ['product_id' => null, 'container_qty' => '1', 'units_qty' => ''];
+        $this->lineUnitsOverridden[] = false;
+    }
+
+    public function removeProductLine(int $index): void
+    {
+        abort_unless($this->foreignTrade, 404);
+        unset($this->productLines[$index]);
+        unset($this->lineUnitsOverridden[$index]);
+        $this->productLines = array_values($this->productLines);
+        $this->lineUnitsOverridden = array_values($this->lineUnitsOverridden);
+        $this->pruneProductVariants();
+    }
+
+    private function pruneProductVariants(): void
+    {
+        $variantIds = ProductVariant::whereIn('product_id', array_column($this->productLines, 'product_id'))->pluck('id')->all();
+        $this->productVariantLines = array_values(array_filter($this->productVariantLines, fn (array $line): bool => in_array((int) ($line['product_variant_id'] ?? 0), $variantIds, true)));
     }
 
     public function selectForeignTradeTab(string $tab): void
@@ -250,6 +373,9 @@ class Form extends Component
     public function addProductVariantLine(): void
     {
         abort_unless($this->foreignTrade, 404);
+        if (! $this->variantsEnabled()) {
+            return;
+        }
 
         $this->productVariantLines[] = ['product_variant_id' => null, 'quantity' => '0'];
     }
@@ -257,6 +383,9 @@ class Form extends Component
     public function removeProductVariantLine(int $index): void
     {
         abort_unless($this->foreignTrade, 404);
+        if (! $this->variantsEnabled()) {
+            return;
+        }
 
         unset($this->productVariantLines[$index]);
         $this->productVariantLines = array_values($this->productVariantLines);
@@ -303,6 +432,25 @@ class Form extends Component
             ));
         }
         $rules = MscFields::rules($this->shipmentId, $this->foreignTrade, $this->bl_house);
+        $variantsEnabled = $this->variantsEnabled();
+        $prepared = null;
+        if ($this->foreignTrade) {
+            if ($this->confirmingCategoryChange) {
+                $this->addError('category_id', 'Confirma o cancela el cambio de categoría antes de guardar.');
+
+                return;
+            }
+            $linesToSave = $this->productLines;
+            foreach ($linesToSave as $index => $line) {
+                if (($this->lineUnitsOverridden[$index] ?? true) === false) {
+                    $linesToSave[$index]['units_qty'] = '';
+                }
+            }
+            $prepared = app(PrepareShipmentProducts::class)->handle($this->category_id, $linesToSave);
+            unset($rules['product_id'], $rules['container_qty'], $rules['units_qty']);
+        } elseif ($this->hasMultipleProducts) {
+            unset($rules['product_id'], $rules['container_qty'], $rules['units_qty']);
+        }
         if ($this->foreignTrade) {
             $rules += [
                 'containerLines' => ['array'],
@@ -313,26 +461,39 @@ class Form extends Component
                 'productVariantLines.*.product_variant_id' => [
                     'required',
                     'integer',
-                    Rule::exists(ProductVariant::class, 'id')->where('product_id', $this->product_id),
+                    Rule::exists(ProductVariant::class, 'id')->whereIn('product_id', array_column($prepared['lines'], 'product_id')),
                     'distinct',
                 ],
                 'productVariantLines.*.quantity' => ['nullable', 'integer', 'min:0', 'max:2147483647'],
             ];
+        }
+        if (! $variantsEnabled) {
+            foreach (array_keys($rules) as $field) {
+                if ($field === 'productVariantLines' || str_starts_with($field, 'productVariantLines.')) {
+                    unset($rules[$field]);
+                }
+            }
         }
         $data = $this->validate($rules, attributes: MscFields::labels());
         $data['status'] = $this->status === '' ? null : $this->status;
         if ($this->foreignTrade) {
             $data['status_bl'] = $this->status_bl === '' ? null : $this->status_bl;
         }
-        $data['units_qty'] = $this->unitsQtyOverridden ? (int) $this->units_qty : null;
-        $unitsPerContainer = Product::query()->whereKey($data['product_id'])->value('units_per_container');
+        if ($this->foreignTrade) {
+            $data['product_id'] = $prepared['lines'][0]['product_id'];
+            $data['container_qty'] = $prepared['container_qty'];
+            $data['units_qty'] = $prepared['units_qty'];
+        } elseif (! $this->hasMultipleProducts) {
+            $data['units_qty'] = $this->unitsQtyOverridden ? (int) $this->units_qty : null;
+        }
+        $unitsPerContainer = $this->foreignTrade || $this->hasMultipleProducts ? null : Product::query()->whereKey($data['product_id'])->value('units_per_container');
         $capacity = $unitsPerContainer === null ? null : (int) $unitsPerContainer * (int) $data['container_qty'];
         if ($capacity !== null && $capacity > 2147483647) {
             $this->addError('container_qty', 'La capacidad calculada supera el máximo permitido. Ajusta las unidades por contenedor o la cantidad.');
 
             return;
         }
-        if ($data['units_qty'] !== null && $capacity !== null && $data['units_qty'] > $capacity) {
+        if (($data['units_qty'] ?? null) !== null && $capacity !== null && $data['units_qty'] > $capacity) {
             $this->addError('units_qty', 'La cantidad real no puede superar la capacidad de los contenedores.');
 
             return;
@@ -356,18 +517,30 @@ class Form extends Component
                 ->all();
             unset($data['productVariantLines']);
         }
-        $shipment = DB::transaction(function () use ($data, $containerLines, $productVariantLines): MscShipment {
-            $shipment = $this->shipmentId ? MscShipment::findOrFail($this->shipmentId) : new MscShipment;
+        $shipment = DB::transaction(function () use ($data, $containerLines, $productVariantLines, $prepared, $variantsEnabled): MscShipment {
+            $shipment = $this->shipmentId ? MscShipment::query()->lockForUpdate()->findOrFail($this->shipmentId) : new MscShipment;
+            $multipleProducts = $shipment->exists && $shipment->productLines()->count() > 1;
+            if (! $this->foreignTrade && $multipleProducts) {
+                unset($data['product_id'], $data['container_qty'], $data['units_qty']);
+            }
             $shipment->fill($data);
             $shipment->save();
+            if ($this->foreignTrade) {
+                $shipment->productLines()->delete();
+                $shipment->productLines()->createMany($prepared['lines']);
+            } elseif (! $this->hasMultipleProducts && ! $multipleProducts) {
+                $shipment->syncSingleProductLine();
+            }
             if ($this->foreignTrade) {
                 $shipment->containers()->delete();
                 if ($containerLines !== []) {
                     $shipment->containers()->createMany($containerLines);
                 }
-                $shipment->productVariantLines()->delete();
-                if ($productVariantLines !== []) {
-                    $shipment->productVariantLines()->createMany($productVariantLines);
+                if ($variantsEnabled) {
+                    $shipment->productVariantLines()->delete();
+                    if ($productVariantLines !== []) {
+                        $shipment->productVariantLines()->createMany($productVariantLines);
+                    }
                 }
             }
 
@@ -390,19 +563,80 @@ class Form extends Component
     {
         $title = $this->shipmentId ? 'MSC No. '.$this->shipmentId : 'Crear MSC';
 
-        $products = Product::orderBy('name')->get();
+        $products = Product::query()->when($this->foreignTrade, fn ($query) => $this->category_id === null ? $query->whereRaw('1 = 0') : $query->where('category_id', $this->category_id))->orderBy('name')->get();
         $selectedProduct = $products->firstWhere('id', $this->product_id);
+        $selectedIds = array_column($this->productLines, 'product_id');
+        $lineProducts = Product::whereIn('id', $selectedIds)->get()->keyBy('id');
+        $totalContainers = 0;
+        $totalUnits = 0;
+        $unknownUnits = false;
+        foreach ($this->productLines as $line) {
+            $count = is_numeric($line['container_qty'] ?? null) ? max(0, (int) $line['container_qty']) : 0;
+            $perContainer = $lineProducts->get($line['product_id'] ?? null)?->units_per_container;
+            $actual = $line['units_qty'] ?? '';
+            $totalContainers += $count;
+            $unknownUnits = $unknownUnits || ($actual === '' && $perContainer === null);
+            $totalUnits += is_numeric($actual) ? (int) $actual : $count * ($perContainer ?? 0);
+        }
 
         return view('pages.msc.form', [
             'factories' => Factory::orderBy('name')->get(),
             'products' => $products,
+            'lineProducts' => $lineProducts,
+            'totalContainers' => $totalContainers,
+            'totalLineUnits' => $unknownUnits ? null : $totalUnits,
+            'selectedCategory' => $this->foreignTrade ? Category::find($this->category_id) : null,
+            'variantsEnabled' => $this->variantsEnabled(),
             'selectedProduct' => $selectedProduct,
             'unitsPerContainer' => $selectedProduct?->units_per_container,
             'vessels' => Vessel::orderBy('name')->get(),
             'categories' => $this->foreignTrade ? Category::orderBy('name')->get() : collect(),
-            'productVariants' => $this->foreignTrade ? $selectedProduct?->variants ?? collect() : collect(),
+            'productVariants' => $this->foreignTrade && $this->variantsEnabled() ? ProductVariant::with('product')->whereIn('product_id', $selectedIds)->get() : collect(),
         ])
             ->layout('layouts.dashboard', ['title' => $title, 'heading' => $title]);
+    }
+
+    private function variantsEnabled(): bool
+    {
+        return ! (Category::find($this->category_id)?->allows_multiple_products ?? false);
+    }
+
+    private function initializeProductLineQuantities(): void
+    {
+        $this->lineUnitsOverridden = [];
+        foreach ($this->productLines as $index => $line) {
+            $this->lineUnitsOverridden[$index] = ! in_array($line['units_qty'] ?? null, ['', null], true);
+            if (! $this->lineUnitsOverridden[$index]) {
+                $this->recalculateProductLineUnits($index);
+            }
+        }
+    }
+
+    private function recalculateProductLineUnits(int $index): void
+    {
+        $line = $this->productLines[$index];
+        $unitsPerContainer = empty($line['product_id']) ? null : Product::whereKey($line['product_id'])->value('units_per_container');
+        $count = (string) ($line['container_qty'] ?? '');
+        if ($unitsPerContainer === null || ! ctype_digit($count) || (float) $count > 2147483647) {
+            $this->productLines[$index]['units_qty'] = '';
+
+            return;
+        }
+        $units = (int) $unitsPerContainer * (int) $count;
+        $this->productLines[$index]['units_qty'] = $units > 2147483647 ? '' : (string) $units;
+    }
+
+    private function recalculateProductLineContainers(int $index): void
+    {
+        $line = $this->productLines[$index];
+        $units = trim((string) ($line['units_qty'] ?? ''));
+        if (! ctype_digit($units) || (float) $units < 1 || (float) $units > 2147483647 || empty($line['product_id'])) {
+            return;
+        }
+        $unitsPerContainer = Product::whereKey($line['product_id'])->value('units_per_container');
+        if ($unitsPerContainer !== null && (int) $unitsPerContainer > 0) {
+            $this->productLines[$index]['container_qty'] = (string) intdiv((int) $units + (int) $unitsPerContainer - 1, (int) $unitsPerContainer);
+        }
     }
 
     private function recalculateUnitsQty(): void

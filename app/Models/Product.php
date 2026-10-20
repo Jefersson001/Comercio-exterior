@@ -31,6 +31,12 @@ class Product extends Model
         return $this->hasMany(MscShipment::class);
     }
 
+    /** @return HasMany<MscShipmentProduct, $this> */
+    public function shipmentLines(): HasMany
+    {
+        return $this->hasMany(MscShipmentProduct::class);
+    }
+
     /** @return HasMany<ProductVariant, $this> */
     public function variants(): HasMany
     {
