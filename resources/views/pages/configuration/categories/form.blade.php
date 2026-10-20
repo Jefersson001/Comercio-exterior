@@ -10,6 +10,13 @@
     <form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
         <div class="mb-8 border-b border-slate-200 pb-6 dark:border-white/10"><p class="text-xs font-semibold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-300">Información de la categoría</p><h3 class="mt-2 text-2xl font-semibold">{{ $categoryId ? $name : 'Nueva categoría' }}</h3></div>
         <fieldset wire:loading.attr="disabled" class="min-w-0"><legend class="sr-only">Datos de la categoría</legend><x-forms.input name="name" label="Nombre *" wire:model="name" maxlength="255" required autofocus /></fieldset>
+        <div class="mt-5">
+            <label for="allows_multiple_products" class="inline-flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <input id="allows_multiple_products" type="checkbox" wire:model="allows_multiple_products" wire:loading.attr="disabled" class="size-5 rounded border-slate-300 accent-indigo-600 dark:border-white/10">
+                Es para múltiples productos
+            </label>
+            @error('allows_multiple_products')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+        </div>
         <div class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
             @if ($categoryId)
                 <button type="button" wire:click="delete" wire:confirm="¿Deseas eliminar esta categoría? Esta acción no se puede deshacer." wire:loading.attr="disabled" class="mr-auto rounded-xl border border-rose-200 px-5 py-3 font-semibold text-rose-600 transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10">Eliminar categoría</button>

@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Configuration\Products;
 
+use App\Models\Category;
 use App\Models\MscShipmentProductVariant;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -21,6 +22,8 @@ class Form extends Component
 
     public string $units_per_container = '';
 
+    public ?int $category_id = null;
+
     /** @var array<int, array{id?: int|string|null, color: string}> */
     public array $variants = [];
 
@@ -34,6 +37,7 @@ class Form extends Component
         if ($product?->exists) {
             $this->productId = $product->id;
             $this->name = $product->name;
+            $this->category_id = $product->category_id;
             $this->units_per_container = $product->units_per_container === null ? '' : (string) $product->units_per_container;
             $this->variants = $product->variants
                 ->map(fn (ProductVariant $variant): array => [
@@ -81,6 +85,7 @@ class Form extends Component
         $rules = [
             'name' => ['required', 'string', 'max:255', Rule::unique(Product::class)->ignore($this->productId)],
             'units_per_container' => ['nullable', 'integer', 'min:1', 'max:2147483647'],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'variants' => ['array'],
             'variants.*' => ['array:id,color'],
             'variants.*.id' => ['nullable', 'integer'],
@@ -109,6 +114,7 @@ class Form extends Component
         $product = DB::transaction(function () use ($data): Product {
             $product = $this->productId ? Product::findOrFail($this->productId) : new Product;
             $product->name = $data['name'];
+            $product->category_id = $data['category_id'];
             $product->units_per_container = in_array($data['units_per_container'], [null, ''], true)
                 ? null
                 : (int) $data['units_per_container'];
@@ -160,7 +166,7 @@ class Form extends Component
     {
         $title = $this->productId ? 'Editar producto' : 'Crear producto';
 
-        return view('pages.configuration.products.form')
+        return view('pages.configuration.products.form', ['categories' => Category::query()->orderBy('name')->get()])
             ->layout('layouts.dashboard', ['title' => $title, 'heading' => $title]);
     }
 }

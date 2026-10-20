@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Pages\Configuration\Products\Form;
 use App\Livewire\Pages\Configuration\Products\Index;
+use App\Models\Category;
 use App\Models\MscShipment;
 use App\Models\Product;
 use App\Models\ProductVariant;
@@ -25,7 +26,7 @@ class ProductManagementTest extends TestCase
 
     public function test_product_information_is_limited_to_name(): void
     {
-        $this->assertEqualsCanonicalizing(['id', 'name', 'units_per_container', 'created_at', 'updated_at'], Schema::getColumnListing('products'));
+        $this->assertEqualsCanonicalizing(['id', 'name', 'units_per_container', 'category_id', 'created_at', 'updated_at'], Schema::getColumnListing('products'));
         $this->assertEqualsCanonicalizing(
             ['id', 'product_id', 'color', 'created_at', 'updated_at'],
             Schema::getColumnListing('product_variants'),
@@ -48,6 +49,21 @@ class ProductManagementTest extends TestCase
 
         Livewire::test(Index::class)->assertForbidden();
         Livewire::test(Form::class)->assertForbidden();
+    }
+
+    public function test_product_category_can_be_assigned_changed_and_cleared(): void
+    {
+        $this->actingAs($this->administrator());
+        $category = Category::factory()->create();
+        Livewire::test(Form::class)->set('name', 'Repuesto categorizado')
+            ->set('category_id', $category->id)->call('save')->assertHasNoErrors();
+        $product = Product::where('name', 'Repuesto categorizado')->firstOrFail();
+        $this->assertTrue($product->category->is($category));
+        Livewire::test(Form::class, ['product' => $product])
+            ->assertSet('category_id', $category->id)->assertSee($category->name)
+            ->set('category_id', 999999)->call('save')->assertHasErrors('category_id')
+            ->set('category_id', null)->call('save')->assertHasNoErrors();
+        $this->assertNull($product->fresh()->category_id);
     }
 
     public function test_administrator_can_open_tree_create_and_edit_views(): void

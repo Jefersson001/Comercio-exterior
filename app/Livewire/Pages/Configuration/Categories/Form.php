@@ -16,6 +16,8 @@ class Form extends Component
 
     public string $name = '';
 
+    public bool $allows_multiple_products = false;
+
     public function boot(): void
     {
         Gate::authorize('manage-categories');
@@ -26,6 +28,7 @@ class Form extends Component
         if ($category?->exists) {
             $this->categoryId = $category->id;
             $this->name = $category->name;
+            $this->allows_multiple_products = $category->allows_multiple_products;
         }
     }
 
@@ -34,6 +37,7 @@ class Form extends Component
         Gate::authorize('manage-categories');
         $this->name = trim($this->name);
         $this->validate([
+            'allows_multiple_products' => ['required', 'boolean'],
             'name' => ['required', 'string', 'max:255', Rule::unique(Category::class)->ignore($this->categoryId)],
         ], [
             'name.required' => 'Ingresa el nombre de la categoría.',
@@ -43,6 +47,7 @@ class Form extends Component
 
         $category = $this->categoryId ? Category::findOrFail($this->categoryId) : new Category;
         $category->name = $this->name;
+        $category->allows_multiple_products = $this->allows_multiple_products;
         $category->save();
 
         session()->flash('status', $this->categoryId ? 'Categoría actualizada correctamente.' : 'Categoría creada correctamente.');

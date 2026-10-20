@@ -20,6 +20,22 @@ class CategoryManagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_multiple_products_flag_is_saved_and_visible_in_form_and_tree(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Administrator]));
+        Livewire::test(Form::class)->assertSet('allows_multiple_products', false)
+            ->set('name', 'Repuestos')->set('allows_multiple_products', true)
+            ->call('save')->assertHasNoErrors();
+        $category = Category::firstOrFail();
+        $this->assertTrue($category->allows_multiple_products);
+        $this->get(route('configuration.categories.index'))->assertOk()
+            ->assertSee('Es para múltiples productos')->assertSee('Sí');
+        Livewire::test(Form::class, ['category' => $category])
+            ->assertSet('allows_multiple_products', true)->assertSee('Es para múltiples productos')
+            ->set('allows_multiple_products', false)->call('save')->assertHasNoErrors();
+        $this->assertFalse($category->fresh()->allows_multiple_products);
+    }
+
     public function test_categories_are_managed_only_by_administrators(): void
     {
         $this->get(route('configuration.categories.index'))->assertRedirect(route('login'));

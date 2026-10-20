@@ -26,15 +26,16 @@
         </div>
         <div class="overflow-x-auto" wire:loading.class="opacity-60">
             <table class="w-full text-left">
-                <thead class="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase dark:bg-slate-950/40 dark:text-slate-400"><tr><th scope="col" class="px-6 py-4 font-semibold">Nombre</th><th scope="col" class="w-28 px-6 py-4 font-semibold">Acciones</th></tr></thead>
+                <thead class="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase dark:bg-slate-950/40 dark:text-slate-400"><tr><th scope="col" class="px-6 py-4 font-semibold">Nombre</th><th scope="col" class="px-6 py-4 font-semibold">Es para múltiples productos</th><th scope="col" class="w-28 px-6 py-4 font-semibold">Acciones</th></tr></thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-white/5">
                     @forelse ($categories as $category)
                         <tr wire:key="category-{{ $category->id }}" data-clickable-row data-href="{{ route('configuration.categories.edit', $category) }}" tabindex="0" aria-label="Editar {{ $category->name }}" class="cursor-pointer transition hover:bg-indigo-50/60 focus:bg-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/5 dark:focus:bg-indigo-500/5">
                             <td class="px-6 py-4"><a href="{{ route('configuration.categories.edit', $category) }}" class="font-semibold hover:text-indigo-600 hover:underline dark:hover:text-indigo-300">{{ $category->name }}</a></td>
+                            <td class="px-6 py-4">{{ $category->allows_multiple_products ? 'Sí' : 'No' }}</td>
                             <td class="px-6 py-4"><a href="{{ route('configuration.categories.edit', $category) }}" aria-label="Editar {{ $category->name }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/10">Editar</a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="2" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron categorías</p><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Prueba con otra búsqueda o crea una categoría.</p></td></tr>
+                        <tr><td colspan="3" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron categorías</p><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Prueba con otra búsqueda o crea una categoría.</p></td></tr>
                     @endforelse
                 </tbody>
             </table>
