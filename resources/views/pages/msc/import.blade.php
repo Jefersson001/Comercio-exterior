@@ -3,16 +3,14 @@
     <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm leading-7 text-indigo-800 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200">
         <p class="font-semibold">Antes de importar</p>
         <ul class="mt-2 list-inside list-disc space-y-1">
-            <li>El No. del archivo se ignora: cada registro nuevo recibe el siguiente número del sistema.</li>
-            <li>Model debe coincidir con un producto registrado. Se normalizan espacios y saltos de línea al buscarlo.</li>
-            <li>Factory se asigna si coincide con una fábrica de Configuración → Fábricas; si no coincide, queda sin asignar.</li>
-            <li>Buque se asigna si coincide con un buque de Configuración → Buques; si no coincide, queda sin asignar. También se aceptan archivos anteriores con el encabezado Ship Agent.</li>
-            <li>Cant Unidades puede indicarse en el archivo o dejarse vacía para calcularse según las unidades por contenedor del producto y Cant contenedores.</li>
-            <li>Usa las columnas BL Master y BL House. En archivos anteriores, la primera línea del Bill of Lading se toma como BL Master y la segunda como BL House.</li>
-            @if($foreignTrade)<li>La columna Categoría es opcional y debe coincidir con una categoría registrada en Configuración → Categorías.</li>@endif
+            <li>La plantilla incluye las pestañas Comercio Internacional y Comercio Exterior. Se procesan ambas, primero la pestaña internacional y luego la exterior.</li>
+            <li>La pestaña Comercio Internacional crea embarques nuevos y actualiza los existentes identificados por BL Master y BL House. El No. del archivo se ignora; el sistema asigna la numeración.</li>
+            <li>Para crear un embarque, completa ETD, ETA, BL Master, Model, Cant contenedores y Free time. Model debe coincidir con un producto registrado.</li>
+            <li>En Comercio Exterior, completa BL Master y BL House para actualizar un embarque existente. Las celdas vacías no borran sus datos; una fila exterior no crea un embarque por sí sola.</li>
+            <li>Factory, Buque y Categoría se relacionan cuando coinciden con registros de sus catálogos. También se aceptan archivos anteriores con el encabezado Ship Agent.</li>
             <li>Usa fechas de Excel o el formato AAAA-MM-DD. Free time acepta días numéricos o valores como «21 days».</li>
-            <li>Los pares BL Master / BL House ya registrados se omiten. Los registros existentes no se modifican.</li>
-            <li>Se procesa la primera hoja. Se admiten el formato de la plantilla y el archivo original, omitiendo títulos, notas y totales.</li>
+            <li>La columna COLORES admite formatos como «12 rojo // negro // 5 blanco»; los colores deben existir como variantes del producto seleccionado.</li>
+            <li>Se admiten archivos MSC anteriores; las filas vacías, notas y totales se omiten.</li>
         </ul>
         <p class="mt-3">Si alguna fila es inválida, se cancela toda la carga y se indica la fila que debes corregir.</p>
         <a href="{{ $this->mscRoute('template') }}" class="mt-4 inline-flex rounded-xl border border-indigo-200 bg-white px-5 py-2.5 font-semibold hover:bg-indigo-100 dark:border-indigo-400/20 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20">Descargar plantilla</a>

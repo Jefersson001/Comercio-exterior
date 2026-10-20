@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Vessel;
 use App\Support\MscFields;
+use App\Support\MscReportFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
@@ -51,6 +52,32 @@ class MscSpreadsheetTest extends TestCase
         return $this->spreadsheet([array_values(MscFields::HEADERS), ...$rows]);
     }
 
+    /** @param array<string, list<list<mixed>>> $sheets */
+    private function workbook(array $sheets): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'test-msc-book-');
+        $writer = new Writer;
+        $writer->openToFile($path);
+        $first = true;
+        foreach ($sheets as $name => $rows) {
+            if (! $first) {
+                $sheet = $writer->addNewSheetAndMakeItCurrent();
+                $sheet->setName($name);
+            } else {
+                $writer->getCurrentSheet()->setName($name);
+                $first = false;
+            }
+            foreach ($rows as $row) {
+                $writer->addRow(Row::fromValues($row));
+            }
+        }
+        $writer->close();
+        $content = file_get_contents($path);
+        unlink($path);
+
+        return UploadedFile::fake()->createWithContent('msc.xlsx', $content);
+    }
+
     /** @return list<array<mixed>> */
     private function read(string $path): array
     {
@@ -71,6 +98,29 @@ class MscSpreadsheetTest extends TestCase
         }
 
         return $rows;
+    }
+
+    /** @return array<string, list<list<mixed>>> */
+    private function readWorkbook(string $path): array
+    {
+        $reader = new Reader;
+        $reader->open($path);
+        $worksheets = [];
+        try {
+            foreach ($reader->getSheetIterator() as $sheet) {
+                $rows = [];
+                foreach ($sheet->getRowIterator() as $row) {
+                    $rows[] = array_values($row->toArray());
+                }
+                $worksheets[$sheet->getName()] = $rows;
+            }
+        } finally {
+            $reader->close();
+            unset($reader, $sheet, $row);
+            unlink($path);
+        }
+
+        return $worksheets;
     }
 
     protected function setUp(): void
@@ -152,10 +202,9 @@ class MscSpreadsheetTest extends TestCase
 
         $response = $this->get(route('msc.export'))->assertOk();
         $rows = $this->read($response->baseResponse->getFile()->getPathname());
-        $this->assertSame('CANT.', $rows[0][10]);
-        $this->assertSame('UNID TOTALES', $rows[0][14]);
-        $this->assertSame(70, $rows[1][14]);
-        $this->assertSame(120, $rows[2][14]);
+        $this->assertSame('Cant Unidades', $rows[0][8]);
+        $this->assertSame(70, $rows[1][8]);
+        $this->assertSame(120, $rows[2][8]);
     }
 
     public function test_import_rejects_unit_totals_above_product_container_capacity(): void
@@ -180,8 +229,8 @@ class MscSpreadsheetTest extends TestCase
 
         $response = $this->get(route('msc.export'))->assertOk();
         $rows = $this->read($response->baseResponse->getFile()->getPathname());
-        $this->assertSame('STATUS', $rows[0][6]);
-        $this->assertSame('PUERTO', $rows[1][6]);
+        $this->assertSame('Status', $rows[0][12]);
+        $this->assertSame('PUERTO', $rows[1][12]);
     }
 
     public function test_original_workbook_layout_titles_notes_totals_and_extra_columns_are_supported(): void
@@ -203,14 +252,14 @@ class MscSpreadsheetTest extends TestCase
         $this->assertSame('2026-11-01', $record->eta->format('Y-m-d'));
     }
 
-    public function test_import_skips_repeated_bills_without_overwriting_existing_records(): void
+    public function test_import_updates_existing_bill_pairs_without_creating_duplicates(): void
     {
         $file = $this->upload([$this->row(), $this->row(), $this->row('BL-NEW', 'Model One', 'HOUSE-001'), $this->row('BL-SECOND')]);
         $importer = app(ImportMscShipments::class);
         $first = $importer->handle($file->getPathname());
         $second = $importer->handle($file->getPathname());
-        $this->assertSame(['imported' => 3, 'skipped' => 1], $first);
-        $this->assertSame(['imported' => 0, 'skipped' => 4], $second);
+        $this->assertSame(['imported' => 3, 'updated' => 0, 'skipped' => 0], $first);
+        $this->assertSame(['imported' => 0, 'updated' => 3, 'skipped' => 0], $second);
         $this->assertSame([1, 2, 3], MscShipment::orderBy('id')->pluck('id')->all());
         $this->assertSame('HOUSE-001', MscShipment::where('bl_master', 'BL-NEW')->where('bl_house', 'HOUSE-001')->firstOrFail()->bl_house);
     }
@@ -238,7 +287,102 @@ class MscSpreadsheetTest extends TestCase
     public function test_template_contains_the_requested_columns_and_no_sample_records(): void
     {
         $response = $this->get(route('msc.template'))->assertOk()->assertDownload('plantilla-msc.xlsx');
-        $this->assertSame([array_values(MscFields::HEADERS)], $this->read($response->baseResponse->getFile()->getPathname()));
+        $sheets = $this->readWorkbook($response->baseResponse->getFile()->getPathname());
+        $this->assertSame(['Comercio Internacional', 'Comercio Exterior'], array_keys($sheets));
+        $this->assertSame([array_values(MscFields::HEADERS)], $sheets['Comercio Internacional']);
+        $this->assertSame([MscReportFields::INTERNAL_HEADERS], $sheets['Comercio Exterior']);
+    }
+
+    public function test_international_report_contains_only_the_fields_visible_in_that_module(): void
+    {
+        MscShipment::factory()->create();
+
+        $response = $this->get(route('msc.export'))->assertOk();
+        $rows = $this->read($response->baseResponse->getFile()->getPathname());
+
+        $this->assertSame(array_values(MscFields::HEADERS), $rows[0]);
+        $this->assertCount(count(MscFields::HEADERS), $rows[1]);
+    }
+
+    public function test_template_import_creates_from_international_sheet_and_updates_from_foreign_trade_sheet(): void
+    {
+        Factory::factory()->create(['name' => 'Fábrica Import']);
+        Vessel::factory()->create(['name' => 'Buque Import']);
+        $category = Category::factory()->create(['name' => 'Categoría Import']);
+        $product = Product::firstOrFail();
+        $product->update(['units_per_container' => 24]);
+        $variant = $product->variants()->create(['color' => 'rojo']);
+
+        $internationalHeaders = array_values(MscFields::HEADERS);
+        $internationalRow = array_fill(0, count($internationalHeaders), '');
+        $internationalValues = [
+            'ETD' => '2026-10-01',
+            'ETA' => '2026-11-01',
+            'BL Master' => 'MASTER-IMPORT',
+            'BL House' => 'HOUSE-IMPORT',
+            'Factory' => 'Fábrica Import',
+            'Model' => 'Model One',
+            'Cant contenedores' => 2,
+            'Cant Unidades' => 20,
+            'Free time' => 21,
+            'Buque' => 'Buque Import',
+            'RELEASED' => 'Flete marítimo',
+            'Status' => 'NAVEGANDO',
+        ];
+        foreach ($internationalValues as $header => $value) {
+            $internationalRow[array_search($header, $internationalHeaders, true)] = $value;
+        }
+
+        $foreignHeaders = MscReportFields::INTERNAL_HEADERS;
+        $foreignRow = array_fill(0, count($foreignHeaders), '');
+        $foreignValues = [
+            'N°EXP.' => 'EXP-IMPORT',
+            'ESTATUS BL' => MscBillOfLadingStatus::Released->value,
+            'STATUS' => 'PUERTO',
+            'BL Master' => 'MASTER-IMPORT',
+            'BL House' => 'HOUSE-IMPORT',
+            'CONTENEDOR' => "CONT-ONE\nCONT-TWO",
+            'CANT.' => 2,
+            'TIPO' => $category->name,
+            'MODELO/CONDICION' => 'Model One',
+            'PROVEEDOR' => 'Fábrica Import',
+            'UNID TOTALES' => 20,
+            'BUQUE' => 'Buque Import',
+            'SERVICIO FLETE' => 'Flete marítimo',
+            'COLORES' => '12 rojo',
+            'ETD' => '2026-10-01',
+            'ETA VZLA' => '2026-10-25',
+            'PUERTO' => 'La Guaira',
+        ];
+        foreach ($foreignValues as $header => $value) {
+            $foreignRow[array_search($header, $foreignHeaders, true)] = $value;
+        }
+
+        $file = $this->workbook([
+            'Comercio Internacional' => [$internationalHeaders, $internationalRow],
+            'Comercio Exterior' => [$foreignHeaders, $foreignRow],
+        ]);
+        $result = app(ImportMscShipments::class)->handle($file->getPathname());
+
+        $this->assertSame(['imported' => 1, 'updated' => 0, 'skipped' => 0], $result);
+        $shipment = MscShipment::where('bl_master', 'MASTER-IMPORT')->where('bl_house', 'HOUSE-IMPORT')->firstOrFail();
+        $this->assertSame('2026-11-01', $shipment->eta->format('Y-m-d'));
+        $this->assertSame('2026-10-25', $shipment->eta_vnzl?->format('Y-m-d'));
+        $this->assertSame('EXP-IMPORT', $shipment->exp_number);
+        $this->assertSame($category->id, $shipment->category_id);
+        $this->assertSame('La Guaira', $shipment->port);
+        $this->assertSame(['CONT-ONE', 'CONT-TWO'], $shipment->containers()->pluck('name')->all());
+        $this->assertSame([['product_variant_id' => $variant->id, 'quantity' => 12]], $shipment->productVariantLines()->get(['product_variant_id', 'quantity'])->map(fn ($line): array => $line->toArray())->all());
+
+        $internationalRow[array_search('Status', $internationalHeaders, true)] = 'PUERTO';
+        $updateFile = $this->workbook([
+            'Comercio Internacional' => [$internationalHeaders, $internationalRow],
+        ]);
+        $update = app(ImportMscShipments::class)->handle($updateFile->getPathname());
+
+        $this->assertSame(['imported' => 0, 'updated' => 1, 'skipped' => 0], $update);
+        $this->assertSame('PUERTO', $shipment->fresh()->status?->value);
+        $this->assertSame('EXP-IMPORT', $shipment->fresh()->exp_number);
     }
 
     public function test_internal_report_includes_ordered_fields_and_formats_containers_and_colors(): void
@@ -303,7 +447,7 @@ class MscSpreadsheetTest extends TestCase
         ]);
 
         $filename = 'reporte-control-carga-interno-'.now()->format('Y-m-d').'.xlsx';
-        $response = $this->get(route('msc.export'))->assertOk()->assertDownload($filename);
+        $response = $this->get(route('foreign-trade.msc.export'))->assertOk()->assertDownload($filename);
         $path = $response->baseResponse->getFile()->getPathname();
         $workbook = new \ZipArchive;
         $this->assertSame(true, $workbook->open($path));
@@ -408,7 +552,7 @@ class MscSpreadsheetTest extends TestCase
         $response = $this->get(route('msc.export', ['search' => 'Special Factory']))->assertOk();
         $rows = $this->read($response->baseResponse->getFile()->getPathname());
         $this->assertCount(2, $rows);
-        $this->assertSame($matched->bl_master, $rows[1][7]);
+        $this->assertSame($matched->bl_master, $rows[1][3]);
     }
 
     public function test_both_reports_apply_the_same_search_filter_as_foreign_trade_list(): void
@@ -417,12 +561,12 @@ class MscSpreadsheetTest extends TestCase
         $matched = MscShipment::factory()->create(['category_id' => $category->id]);
         MscShipment::factory()->create();
 
-        foreach (['msc.export', 'msc.export-direct'] as $route) {
+        foreach (['foreign-trade.msc.export', 'msc.export-direct'] as $route) {
             $response = $this->get(route($route, ['search' => 'Categoría exclusiva para filtro', 'foreign_trade' => true]))
                 ->assertOk();
             $rows = $this->read($response->baseResponse->getFile()->getPathname());
             $this->assertCount(2, $rows);
-            $this->assertSame($matched->bl_master, $rows[1][$route === 'msc.export' ? 7 : 1]);
+            $this->assertSame($matched->bl_master, $rows[1][$route === 'foreign-trade.msc.export' ? 7 : 1]);
         }
 
         foreach (['msc.export', 'msc.export-direct'] as $route) {

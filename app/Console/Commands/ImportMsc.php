@@ -30,7 +30,7 @@ class ImportMsc extends Command
 
             return self::FAILURE;
         }
-        $this->info(($this->option('dry-run') ? 'Validación' : 'Importación').' MSC: '.$result['imported'].' registros nuevos; '.$result['skipped'].' filas omitidas.');
+        $this->info(($this->option('dry-run') ? 'Validación' : 'Importación').' MSC: '.$result['imported'].' registros nuevos, '.$result['updated'].' actualizados; '.$result['skipped'].' filas omitidas.');
 
         return self::SUCCESS;
     }

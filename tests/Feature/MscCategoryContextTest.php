@@ -554,7 +554,7 @@ class MscCategoryContextTest extends TestCase
         Livewire::test(Index::class)->set('search', 'Specific Category')->assertDontSee($shipment->bl_master);
     }
 
-    private function downloadRows(string $route): array
+    private function downloadRows(string $route, ?string $sheetName = null): array
     {
         $response = $this->get(route($route))->assertOk()->assertDownload();
         $path = $response->baseResponse->getFile()->getPathname();
@@ -563,10 +563,15 @@ class MscCategoryContextTest extends TestCase
         $rows = [];
         try {
             foreach ($reader->getSheetIterator() as $sheet) {
+                if ($sheetName !== null && $sheet->getName() !== $sheetName) {
+                    continue;
+                }
                 foreach ($sheet->getRowIterator() as $row) {
                     $rows[] = array_values($row->toArray());
                 }
-                break;
+                if ($sheetName === null || $sheet->getName() === $sheetName) {
+                    break;
+                }
             }
         } finally {
             $reader->close();
@@ -577,25 +582,23 @@ class MscCategoryContextTest extends TestCase
         return $rows;
     }
 
-    public function test_only_exterior_templates_and_exports_contain_categories(): void
+    public function test_template_has_context_tabs_and_reports_use_their_context_columns(): void
     {
         $category = Category::factory()->create(['name' => 'Spare parts']);
         MscShipment::factory()->create(['category_id' => $category->id]);
-        foreach (['template', 'export'] as $action) {
-            $international = $this->downloadRows('msc.'.$action);
-            $exterior = $this->downloadRows('foreign-trade.msc.'.$action);
-            $this->assertCount(14, $exterior[0]);
-            $this->assertSame('Categoría', $exterior[0][13]);
-            if ($action === 'export') {
-                $this->assertCount(42, $international[0]);
-                $this->assertSame('TIPO', $international[0][11]);
-                $this->assertSame('Spare parts', $international[1][11]);
-                $this->assertSame('Spare parts', $exterior[1][13]);
-                $this->assertCount(42, $international[1]);
-            } else {
-                $this->assertCount(13, $international[0]);
-            }
-        }
+        $internationalTemplate = $this->downloadRows('msc.template', 'Comercio Internacional');
+        $foreignTradeTemplate = $this->downloadRows('msc.template', 'Comercio Exterior');
+        $internationalReport = $this->downloadRows('msc.export');
+        $foreignTradeReport = $this->downloadRows('foreign-trade.msc.export');
+
+        $this->assertCount(13, $internationalTemplate[0]);
+        $this->assertCount(42, $foreignTradeTemplate[0]);
+        $this->assertSame('N°EXP.', $foreignTradeTemplate[0][0]);
+        $this->assertCount(13, $internationalReport[0]);
+        $this->assertCount(13, $internationalReport[1]);
+        $this->assertSame('TIPO', $foreignTradeReport[0][11]);
+        $this->assertSame('Spare parts', $foreignTradeReport[1][11]);
+        $this->assertCount(42, $foreignTradeReport[1]);
     }
 
     private function spreadsheet(string $bill, string $category): UploadedFile

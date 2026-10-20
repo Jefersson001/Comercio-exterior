@@ -50,7 +50,7 @@ class Import extends Component
         }
         $this->file->delete();
         $this->reset('file');
-        session()->flash('status', "Importación MSC completada: {$result['imported']} registros nuevos y {$result['skipped']} filas vacías, notas, totales o duplicadas omitidas.");
+        session()->flash('status', "Importación MSC completada: {$result['imported']} registros nuevos, {$result['updated']} actualizados y {$result['skipped']} filas vacías o de resumen omitidas.");
         $this->redirect($this->mscRoute('index'));
     }
 

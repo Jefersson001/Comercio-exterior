@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MscShipment;
 use App\Support\MscFields;
+use App\Support\MscReportFields;
 use Illuminate\Http\Request;
 use OpenSpout\Common\Entity\Cell\NumericCell;
 use OpenSpout\Common\Entity\Cell\StringCell;
@@ -16,9 +17,48 @@ use Throwable;
 
 class MscSpreadsheetController extends Controller
 {
-    public function template(Request $request): BinaryFileResponse
+    public function template(): BinaryFileResponse
     {
-        return $this->download([], 'plantilla-msc.xlsx', $request->routeIs('foreign-trade.msc.*'));
+        $path = tempnam(sys_get_temp_dir(), 'msc-template-');
+        abort_if($path === false, 500, 'No se pudo preparar la plantilla MSC.');
+
+        $writer = new Writer;
+        try {
+            $writer->openToFile($path);
+            try {
+                $internationalSheet = $writer->getCurrentSheet();
+                $internationalSheet->setName('Comercio Internacional');
+                $internationalHeaders = array_values(MscFields::HEADERS);
+                $internationalStyle = new Style(
+                    fontBold: true,
+                    fontSize: 8,
+                    fontColor: Color::WHITE,
+                    backgroundColor: '203764',
+                    shouldWrapText: true,
+                );
+                $writer->addRow(Row::fromValuesWithStyles(
+                    $internationalHeaders,
+                    array_fill(0, count($internationalHeaders), $internationalStyle),
+                ));
+
+                $foreignTradeSheet = $writer->addNewSheetAndMakeItCurrent();
+                $foreignTradeSheet->setName('Comercio Exterior');
+                $writer->addRow(Row::fromValuesWithStyles(
+                    MscReportFields::INTERNAL_HEADERS,
+                    $this->internalReportHeaderStyles(),
+                ));
+            } finally {
+                $writer->close();
+            }
+        } catch (Throwable $exception) {
+            if (is_file($path)) {
+                unlink($path);
+            }
+            throw $exception;
+        }
+        clearstatcache(true, $path);
+
+        return response()->download($path, 'plantilla-msc.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])->deleteFileAfterSend();
     }
 
     public function export(Request $request): BinaryFileResponse
@@ -30,16 +70,16 @@ class MscSpreadsheetController extends Controller
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         $isForeignTradeRoute = $request->routeIs('foreign-trade.msc.*');
         $relations = $isForeignTradeRoute
-            ? ['product', 'category', 'factoryRecord', 'vessel']
-            : ['product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant'];
+            ? ['product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant']
+            : ['product', 'factoryRecord', 'vessel'];
         $shipments = MscShipment::query()->with($relations)
             ->search(trim((string) $request->input('search', '')), $foreignTradeContext)->orderBy('id')->lazy(500);
 
-        if (! $isForeignTradeRoute) {
+        if ($isForeignTradeRoute) {
             return $this->downloadInternalReport($shipments, 'reporte-control-carga-interno-'.now()->format('Y-m-d').'.xlsx');
         }
 
-        return $this->download($shipments, 'msc-'.now()->format('Y-m-d').'.xlsx', true);
+        return $this->downloadInternationalReport($shipments, 'reporte-msc-comercio-internacional-'.now()->format('Y-m-d').'.xlsx');
     }
 
     public function exportDirect(Request $request): BinaryFileResponse
@@ -60,24 +100,8 @@ class MscSpreadsheetController extends Controller
     /** @param iterable<MscShipment> $shipments */
     private function downloadInternalReport(iterable $shipments, string $filename): BinaryFileResponse
     {
-        $headers = [
-            'N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'ESTATUS BL', 'STATUS',
-            'BL Master', 'BL House', 'CONTENEDOR', 'CANT.', 'TIPO', 'MODELO/CONDICION',
-            'PROVEEDOR', 'UNID TOTALES', 'BUQUE', 'SERVICIO FLETE', 'AÑO', 'COLORES',
-            'ETD', 'ETA VZLA', 'PUERTO', 'TRASEGADO', 'IN BOND', 'DIAS LIBRES', 'DEMORA',
-            'ABANDONO LEGAL', 'REGISTRO', 'RECONOCIMIENTO', 'VALIDACION', 'RECEPCIÓN PLANTA',
-            'UBICACIÓN', 'DEVOLUCION', 'FECHA RECEP DE DOC ORIG', 'INSTRUCCIONES ENVIADAS AA',
-            'FECHA LIBERACION BL', 'FECHA DE SOLICITUD DE SENCAMER', 'FECHA RECEPCION DE SENCAMER',
-            'FECHA SOLICITUD DE COMEX', 'FECHA RECEPCION DE COMEX', 'STATUS AGENTE DE ADUANA',
-            'OBSERVACION AGENTE DE ADUANA',
-        ];
-        $headerStyles = [];
-        foreach ([[0, 26, '203764'], [27, 32, '008000'], [33, 39, '00B0E0'], [40, 41, '404040']] as [$start, $end, $backgroundColor]) {
-            $style = new Style(fontBold: true, fontSize: 8, fontColor: Color::WHITE, backgroundColor: $backgroundColor, shouldWrapText: true);
-            for ($index = $start; $index <= $end; $index++) {
-                $headerStyles[$index] = $style;
-            }
-        }
+        $headers = MscReportFields::INTERNAL_HEADERS;
+        $headerStyles = $this->internalReportHeaderStyles();
 
         $reportCellStyle = new Style(fontSize: 8);
         $path = tempnam(sys_get_temp_dir(), 'msc-report-');
@@ -225,7 +249,7 @@ class MscSpreadsheetController extends Controller
     }
 
     /** @param iterable<MscShipment> $shipments */
-    private function download(iterable $shipments, string $filename, bool $foreignTrade): BinaryFileResponse
+    private function downloadInternationalReport(iterable $shipments, string $filename): BinaryFileResponse
     {
         $path = tempnam(sys_get_temp_dir(), 'msc-');
         abort_if($path === false, 500, 'No se pudo preparar la descarga MSC.');
@@ -233,7 +257,7 @@ class MscSpreadsheetController extends Controller
         try {
             $writer->openToFile($path);
             try {
-                $writer->addRow(Row::fromValues(array_values(MscFields::headers($foreignTrade))));
+                $writer->addRow(Row::fromValues(array_values(MscFields::HEADERS)));
                 foreach ($shipments as $shipment) {
                     $cells = [
                         new NumericCell($shipment->id), new StringCell($shipment->etd->format('Y-m-d')),
@@ -245,9 +269,6 @@ class MscSpreadsheetController extends Controller
                         new StringCell($shipment->vessel?->name ?? ''), new StringCell($shipment->released ?? ''),
                         new StringCell($shipment->status?->value ?? ''),
                     ];
-                    if ($foreignTrade) {
-                        $cells[] = new StringCell($shipment->category->name ?? '');
-                    }
                     $writer->addRow(new Row($cells));
                 }
             } finally {
@@ -262,5 +283,19 @@ class MscSpreadsheetController extends Controller
         clearstatcache(true, $path);
 
         return response()->download($path, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])->deleteFileAfterSend();
+    }
+
+    /** @return array<int, Style> */
+    private function internalReportHeaderStyles(): array
+    {
+        $styles = [];
+        foreach ([[0, 26, '203764'], [27, 32, '008000'], [33, 39, '00B0E0'], [40, 41, '404040']] as [$start, $end, $backgroundColor]) {
+            $style = new Style(fontBold: true, fontSize: 8, fontColor: Color::WHITE, backgroundColor: $backgroundColor, shouldWrapText: true);
+            for ($index = $start; $index <= $end; $index++) {
+                $styles[$index] = $style;
+            }
+        }
+
+        return $styles;
     }
 }
