@@ -10,11 +10,11 @@
     <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm leading-7 text-indigo-800 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200">
         <p class="font-semibold">Prepara tu archivo</p>
         <ol class="mt-2 list-inside list-decimal space-y-1">
-            <li>Descarga la plantilla y conserva la columna <strong>Nombre</strong>.</li>
+            <li>Descarga la plantilla y conserva las columnas <strong>Nombre</strong> y <strong>Es para múltiples productos</strong> (Sí o No).</li>
             <li>Escribe una categoría por fila debajo del encabezado (máximo 255 caracteres).</li>
             <li>Guarda el archivo como Excel (.xlsx) y selecciónalo aquí.</li>
         </ol>
-        <p class="mt-3">Se procesa la primera hoja. Los categorías existentes, repetidos en el archivo y las filas vacías se omiten. Si una fila tiene errores, no se guarda ningún cambio.</p>
+        <p class="mt-3">Se procesa la primera hoja. Las categorías existentes actualizan el check si se indica Sí o No; una celda vacía conserva el valor actual. También se aceptan archivos antiguos con solo Nombre. Los duplicados y las filas vacías se omiten. Si hay errores, no se guarda ningún cambio.</p>
         <a href="{{ route('configuration.categories.template') }}" class="mt-4 inline-flex rounded-xl border border-indigo-200 bg-white px-5 py-2.5 font-semibold transition hover:bg-indigo-100 dark:border-indigo-400/20 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20">Descargar plantilla</a>
     </div>
     <form wire:submit="import" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8" x-data="{ uploading: false }" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false" x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false">

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Support\ProductVariantSpreadsheet;
+use App\Support\SpreadsheetLayout;
 use Illuminate\Http\Request;
 use OpenSpout\Common\Entity\Cell\NumericCell;
 use OpenSpout\Common\Entity\Cell\StringCell;
@@ -24,7 +26,7 @@ class ProductSpreadsheetController extends Controller
         $search = trim((string) $request->input('search', ''));
         $products = Product::query()
             ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
-            ->orderBy('name')->orderBy('id')->cursor();
+            ->with(['category', 'variants'])->orderBy('name')->orderBy('id')->lazy(500);
 
         return $this->download($products, 'productos-'.now()->format('Y-m-d').'.xlsx');
     }
@@ -39,13 +41,16 @@ class ProductSpreadsheetController extends Controller
         try {
             $writer->openToFile($path);
             try {
-                $writer->addRow(Row::fromValues(['Nombre', 'Unidades por contenedor']));
+                SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Productos', 4, [1 => 40, 3 => 40, 4 => 50]);
+                $writer->addRow(Row::fromValuesWithStyle(['Nombre', 'Unidades por contenedor', 'Categoría', 'Variantes por color'], SpreadsheetLayout::header()));
                 foreach ($products as $product) {
                     $writer->addRow(new Row([
                         new StringCell($product->name),
                         $product->units_per_container === null
                             ? new StringCell('')
                             : new NumericCell($product->units_per_container),
+                        new StringCell($product->category?->name ?? ''),
+                        (new StringCell($product->category?->allows_multiple_products ? '' : ProductVariantSpreadsheet::format($product->variants->pluck('color')->all())))->withStyle(SpreadsheetLayout::body()),
                     ]));
                 }
             } finally {

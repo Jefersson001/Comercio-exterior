@@ -51,7 +51,7 @@ class Import extends Component
 
         $this->file->delete();
         $this->reset('file');
-        session()->flash('status', "Importación completada: {$result['imported']} categorías cargados y {$result['skipped']} filas vacías o duplicadas omitidas.");
+        session()->flash('status', "Importación completada: {$result['imported']} categorías agregadas, {$result['updated']} actualizadas y {$result['skipped']} filas vacías o duplicadas omitidas.");
         $this->redirectRoute('configuration.categories.index');
     }
 

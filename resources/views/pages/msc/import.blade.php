@@ -9,7 +9,8 @@
             <li>En Comercio Exterior, completa BL Master y BL House para actualizar un embarque existente. Las celdas vacías no borran sus datos; una fila exterior no crea un embarque por sí sola.</li>
             <li>Factory, Buque y Categoría se relacionan cuando coinciden con registros de sus catálogos. También se aceptan archivos anteriores con el encabezado Ship Agent.</li>
             <li>Usa fechas de Excel o el formato AAAA-MM-DD. Free time acepta días numéricos o valores como «21 days».</li>
-            <li>La columna COLORES admite formatos como «12 rojo // negro // 5 blanco»; los colores deben existir como variantes del producto seleccionado.</li>
+            <li>La columna COLORES admite formatos como «12 rojo // negro // 5 blanco» en categorías individuales; déjala vacía en categorías múltiples.</li>
+            <li>Esta plantilla importa un producto por embarque. Los embarques con varias líneas se administran desde el formulario MSC de Comercio Exterior; la hoja Detalle productos de los reportes es solo de consulta.</li>
             <li>Se admiten archivos MSC anteriores; las filas vacías, notas y totales se omiten.</li>
         </ul>
         <p class="mt-3">Si alguna fila es inválida, se cancela toda la carga y se indica la fila que debes corregir.</p>

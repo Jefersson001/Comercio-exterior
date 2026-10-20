@@ -288,7 +288,7 @@ class MscSpreadsheetTest extends TestCase
     {
         $response = $this->get(route('msc.template'))->assertOk()->assertDownload('plantilla-msc.xlsx');
         $sheets = $this->readWorkbook($response->baseResponse->getFile()->getPathname());
-        $this->assertSame(['Comercio Internacional', 'Comercio Exterior'], array_keys($sheets));
+        $this->assertSame(['Comercio Internacional', 'Comercio Exterior', 'Instrucciones'], array_keys($sheets));
         $this->assertSame([array_values(MscFields::HEADERS)], $sheets['Comercio Internacional']);
         $this->assertSame([MscReportFields::INTERNAL_HEADERS], $sheets['Comercio Exterior']);
     }

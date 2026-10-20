@@ -125,6 +125,11 @@ class MscShipment extends Model
         return $this->productLines->isEmpty() ? $this->product->name : $this->productLines->map(fn (MscShipmentProduct $line): string => $line->product->name)->implode("\n");
     }
 
+    public function totalContainers(): int
+    {
+        return $this->productLines->isEmpty() ? $this->container_qty : (int) $this->productLines->sum('container_qty');
+    }
+
     public function syncSingleProductLine(): void
     {
         $this->productLines()->delete();

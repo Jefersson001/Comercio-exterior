@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Category;
+use App\Support\SpreadsheetLayout;
 use Illuminate\Http\Request;
 use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
@@ -23,13 +24,12 @@ class CategorySpreadsheetController extends Controller
         $search = trim((string) $request->input('search', ''));
         $names = Category::query()
             ->when($search !== '', fn ($query) => $query->where('name', 'like', '%'.$search.'%'))
-            ->orderBy('name')->orderBy('id')->cursor()
-            ->map(fn (Category $category): string => $category->name);
+            ->orderBy('name')->orderBy('id')->cursor();
 
         return $this->download($names, 'categorías-'.now()->format('Y-m-d').'.xlsx');
     }
 
-    /** @param iterable<string> $names */
+    /** @param iterable<Category> $names */
     private function download(iterable $names, string $filename): BinaryFileResponse
     {
         $path = tempnam(sys_get_temp_dir(), 'categorías-');
@@ -39,9 +39,10 @@ class CategorySpreadsheetController extends Controller
         try {
             $writer->openToFile($path);
             try {
-                $writer->addRow(new Row([new StringCell('Nombre')]));
-                foreach ($names as $name) {
-                    $writer->addRow(new Row([new StringCell($name)]));
+                SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Categorías', 2, [1 => 40, 2 => 40]);
+                $writer->addRow(Row::fromValuesWithStyle(['Nombre', 'Es para múltiples productos'], SpreadsheetLayout::header()));
+                foreach ($names as $category) {
+                    $writer->addRow(new Row([new StringCell($category->name), new StringCell($category->allows_multiple_products ? 'Sí' : 'No')]));
                 }
             } finally {
                 $writer->close();

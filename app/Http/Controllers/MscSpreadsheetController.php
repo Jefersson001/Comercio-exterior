@@ -7,6 +7,7 @@ use App\Enums\MscShipmentStatus;
 use App\Models\MscShipment;
 use App\Support\MscFields;
 use App\Support\MscReportFields;
+use App\Support\SpreadsheetLayout;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use OpenSpout\Common\Entity\Cell\NumericCell;
@@ -30,7 +31,7 @@ class MscSpreadsheetController extends Controller
             $writer->openToFile($path);
             try {
                 $internationalSheet = $writer->getCurrentSheet();
-                $internationalSheet->setName('Comercio Internacional');
+                SpreadsheetLayout::configure($internationalSheet, 'Comercio Internacional', count(MscFields::HEADERS));
                 $internationalHeaders = array_values(MscFields::HEADERS);
                 $internationalStyle = new Style(
                     fontBold: true,
@@ -45,11 +46,26 @@ class MscSpreadsheetController extends Controller
                 ));
 
                 $foreignTradeSheet = $writer->addNewSheetAndMakeItCurrent();
-                $foreignTradeSheet->setName('Comercio Exterior');
+                SpreadsheetLayout::configure($foreignTradeSheet, 'Comercio Exterior', count(MscReportFields::INTERNAL_HEADERS));
                 $writer->addRow(Row::fromValuesWithStyles(
                     MscReportFields::INTERNAL_HEADERS,
                     $this->internalReportHeaderStyles(),
                 ));
+                $writer->addNewSheetAndMakeItCurrent();
+                SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Instrucciones', 2, [2 => 100]);
+                $writer->addRow(Row::fromValuesWithStyle(['Campo', 'Indicaciones'], SpreadsheetLayout::header()));
+                foreach ([
+                    ['Uso', 'Esta plantilla importa un producto por embarque. Los embarques múltiples se administran en Comercio Exterior → MSC. Los reportes son archivos de consulta; su hoja Detalle productos no es una plantilla de importación.'],
+                    ['Identificación', 'Usa el mismo BL Master y BL House en ambas hojas. Para crear embarques, completa primero Comercio Internacional. No incluyas títulos ni filas de totales.'],
+                    ['Cant Unidades', 'Si no se conocen las unidades, deja la celda vacía. Una celda vacía no significa cero.'],
+                    ['Categoría / TIPO', 'La categoría debe existir en Configuración → Categorías. Los productos de Comercio Exterior deben tener asignada su categoría.'],
+                    ['COLORES', 'Solo corresponde a categorías individuales. Usa variantes existentes del producto, por ejemplo: 12 rojo // 5 blanco. Déjala vacía en categorías múltiples.'],
+                    ['Fechas', 'Usa el formato AAAA-MM-DD. ETA debe ser igual o posterior a ETD.'],
+                    ['Status del embarque', implode(' | ', array_column(MscShipmentStatus::options(), 'value'))],
+                    ['Status BL', implode(' | ', array_column(MscBillOfLadingStatus::cases(), 'value'))],
+                ] as $instruction) {
+                    $writer->addRow(Row::fromValuesWithStyle($instruction, SpreadsheetLayout::body()));
+                }
             } finally {
                 $writer->close();
             }
@@ -115,13 +131,14 @@ class MscSpreadsheetController extends Controller
         $headers = MscReportFields::INTERNAL_HEADERS;
         $headerStyles = $this->internalReportHeaderStyles();
 
-        $reportCellStyle = new Style(fontSize: 8);
+        $reportCellStyle = SpreadsheetLayout::body();
         $path = tempnam(sys_get_temp_dir(), 'msc-report-');
         abort_if($path === false, 500, 'No se pudo preparar la descarga MSC.');
         $writer = new Writer;
         try {
             $writer->openToFile($path);
             try {
+                SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Control carga interno', count($headers), [13 => 42, 41 => 42, 42 => 42]);
                 $writer->addRow(Row::fromValuesWithStyles($headers, $headerStyles));
                 foreach ($shipments as $shipment) {
                     $containers = $shipment->containers->pluck('name')->implode("\n");
@@ -140,7 +157,7 @@ class MscSpreadsheetController extends Controller
                         $shipment->bl_master ?? '',
                         $shipment->bl_house ?? '',
                         $containers,
-                        $shipment->container_qty,
+                        $shipment->totalContainers(),
                         $shipment->category?->name ?? '',
                         $shipment->productNames(),
                         $shipment->factoryRecord?->name ?? '',
@@ -174,15 +191,15 @@ class MscSpreadsheetController extends Controller
                         $shipment->customs_agent_observation ?? '',
                     ];
                     $cells = array_map(
-                        static fn (string|int $value, int $index): NumericCell|StringCell => (in_array($index, [10, 14], true)
+                        static fn (string|int $value, int $index): NumericCell|StringCell => (in_array($index, [10, 14], true) && $value !== ''
                             ? new NumericCell((int) $value)
                             : new StringCell((string) $value))->withStyle($reportCellStyle),
                         $values,
                         array_keys($values),
                     );
                     $writer->addRow(new Row($cells));
+                    $this->writeProductDetails($writer, $shipment);
                 }
-                $this->writeProductDetails($writer, $shipments);
             } finally {
                 $writer->close();
             }
@@ -219,6 +236,7 @@ class MscSpreadsheetController extends Controller
         try {
             $writer->openToFile($path);
             try {
+                SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Control carga directo', count($headers), [5 => 42, 8 => 42]);
                 $writer->addRow(Row::fromValuesWithStyles($headers, $headerStyles));
                 foreach ($shipments as $shipment) {
                     $notes = array_filter([
@@ -229,7 +247,7 @@ class MscSpreadsheetController extends Controller
                         $shipment->status?->value ?? '',
                         $shipment->bl_master ?? '',
                         $shipment->bl_house ?? '',
-                        $shipment->container_qty,
+                        $shipment->totalContainers(),
                         $shipment->productNames(),
                         $shipment->factoryRecord?->name ?? '',
                         $shipment->totalUnits() ?? '',
@@ -239,15 +257,15 @@ class MscSpreadsheetController extends Controller
                         $shipment->port ?? '',
                     ];
                     $cells = array_map(
-                        static fn (string|int $value, int $index): NumericCell|StringCell => (in_array($index, [3, 6], true)
+                        static fn (string|int $value, int $index): NumericCell|StringCell => (in_array($index, [3, 6], true) && $value !== ''
                             ? new NumericCell((int) $value)
                             : new StringCell((string) $value))->withStyle($reportCellStyle),
                         $values,
                         array_keys($values),
                     );
                     $writer->addRow(new Row($cells));
+                    $this->writeProductDetails($writer, $shipment);
                 }
-                $this->writeProductDetails($writer, $shipments);
             } finally {
                 $writer->close();
             }
@@ -271,21 +289,22 @@ class MscSpreadsheetController extends Controller
         try {
             $writer->openToFile($path);
             try {
-                $writer->addRow(Row::fromValues(array_values(MscFields::HEADERS)));
+                SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Comercio Internacional', count(MscFields::HEADERS), [7 => 42]);
+                $writer->addRow(Row::fromValuesWithStyle(array_values(MscFields::HEADERS), SpreadsheetLayout::header()));
                 foreach ($shipments as $shipment) {
                     $cells = [
                         new NumericCell($shipment->id), new StringCell($shipment->etd->format('Y-m-d')),
-                        new StringCell($shipment->eta->format('Y-m-d')), new StringCell($shipment->bl_master),
-                        new StringCell($shipment->bl_house), new StringCell($shipment->factoryRecord?->name ?? ''), new StringCell($shipment->productNames()),
-                        new NumericCell($shipment->container_qty),
+                        new StringCell($shipment->eta->format('Y-m-d')), new StringCell($shipment->bl_master ?? ''),
+                        new StringCell($shipment->bl_house ?? ''), new StringCell($shipment->factoryRecord?->name ?? ''), new StringCell($shipment->productNames()),
+                        new NumericCell($shipment->totalContainers()),
                         $shipment->totalUnits() === null ? new StringCell('') : new NumericCell($shipment->totalUnits()),
                         new NumericCell($shipment->free_time),
                         new StringCell($shipment->vessel?->name ?? ''), new StringCell($shipment->released ?? ''),
                         new StringCell($shipment->status?->value ?? ''),
                     ];
-                    $writer->addRow(new Row($cells));
+                    $writer->addRow(new Row(array_map(fn ($cell) => $cell->withStyle(SpreadsheetLayout::body()), $cells)));
+                    $this->writeProductDetails($writer, $shipment);
                 }
-                $this->writeProductDetails($writer, $shipments);
             } finally {
                 $writer->close();
             }
@@ -300,22 +319,40 @@ class MscSpreadsheetController extends Controller
         return response()->download($path, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])->deleteFileAfterSend();
     }
 
-    /** @param iterable<MscShipment> $shipments */
-    private function writeProductDetails(Writer $writer, iterable $shipments): void
+    private function writeProductDetails(Writer $writer, MscShipment $shipment): void
     {
-        $sheetCreated = false;
-        foreach ($shipments as $shipment) {
-            if ($shipment->productLines->count() < 2) {
-                continue;
+        if ($shipment->productLines->count() < 2) {
+            return;
+        }
+        $mainSheet = $writer->getCurrentSheet();
+        $detailSheet = null;
+        foreach ($writer->getSheets() as $sheet) {
+            if ($sheet->getName() === 'Detalle productos') {
+                $detailSheet = $sheet;
+                break;
             }
-            if (! $sheetCreated) {
-                $writer->addNewSheetAndMakeItCurrent()->setName('Detalle productos');
-                $writer->addRow(Row::fromValues(['No.', 'BL Master', 'BL House', 'Model', 'Cant contenedores', 'Cant Unidades']));
-                $sheetCreated = true;
+        }
+        try {
+            if ($detailSheet === null) {
+                $detailSheet = $writer->addNewSheetAndMakeItCurrent();
+                SpreadsheetLayout::configure($detailSheet, 'Detalle productos', 6, [4 => 42]);
+                $writer->addRow(Row::fromValuesWithStyle(['No.', 'BL Master', 'BL House', 'Model', 'Cant contenedores', 'Cant Unidades'], SpreadsheetLayout::header()));
+            } else {
+                $writer->setCurrentSheet($detailSheet);
             }
             foreach ($shipment->productLines as $line) {
-                $writer->addRow(Row::fromValues([$shipment->id, $shipment->bl_master ?? '', $shipment->bl_house ?? '', $line->product->name, $line->container_qty, $line->totalUnits() ?? '']));
+                $style = SpreadsheetLayout::body();
+                $writer->addRow(new Row([
+                    (new NumericCell($shipment->id))->withStyle($style),
+                    (new StringCell($shipment->bl_master ?? ''))->withStyle($style),
+                    (new StringCell($shipment->bl_house ?? ''))->withStyle($style),
+                    (new StringCell($line->product->name))->withStyle($style),
+                    (new NumericCell($line->container_qty))->withStyle($style),
+                    ($line->totalUnits() === null ? new StringCell('') : new NumericCell($line->totalUnits()))->withStyle($style),
+                ]));
             }
+        } finally {
+            $writer->setCurrentSheet($mainSheet);
         }
     }
 

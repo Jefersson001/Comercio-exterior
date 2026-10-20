@@ -10,11 +10,13 @@
     <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm leading-7 text-indigo-800 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200">
         <p class="font-semibold">Prepara tu archivo</p>
         <ol class="mt-2 list-inside list-decimal space-y-1">
-            <li>Descarga la plantilla y conserva las columnas <strong>Nombre</strong> y <strong>Unidades por contenedor</strong>.</li>
+            <li>Descarga la plantilla y conserva las columnas <strong>Nombre</strong>, <strong>Unidades por contenedor</strong>, <strong>Categoría</strong> y <strong>Variantes por color</strong>. La categoría debe existir en el sistema.</li>
+            <li>Escribe los colores separados por <strong>//</strong> o por saltos de línea, por ejemplo: <strong>Rojo // Azul // Blanco</strong>. Cada color admite hasta 255 caracteres. En categorías múltiples, deja las variantes vacías.</li>
+            <li>Los colores nuevos se agregan sin duplicar ni eliminar los existentes. Para nombres que contengan // o saltos de línea como parte del color, se admite una lista JSON de textos, como la que genera la exportación en esos casos.</li>
             <li>Escribe un producto por fila; las unidades por contenedor deben ser un entero positivo o pueden quedar vacías.</li>
             <li>Guarda el archivo como Excel (.xlsx) y selecciónalo aquí.</li>
         </ol>
-        <p class="mt-3">Se procesa la primera hoja. Los nombres nuevos se agregan; los nombres existentes actualizan sus unidades si se proporciona una cantidad. Repetidos en el archivo y filas vacías se omiten. Si una fila tiene errores, no se guarda ningún cambio. También se aceptan archivos antiguos con solo la columna Nombre.</p>
+        <p class="mt-3">Se procesa la primera hoja. Los productos existentes actualizan las unidades y la categoría cuando se proporcionan valores; las celdas vacías conservan sus datos actuales y sus variantes. Los duplicados y las filas vacías se omiten. Si hay errores, no se guarda ningún cambio. También se aceptan archivos antiguos de una, dos o tres columnas.</p>
         <a href="{{ route('configuration.products.template') }}" class="mt-4 inline-flex rounded-xl border border-indigo-200 bg-white px-5 py-2.5 font-semibold transition hover:bg-indigo-100 dark:border-indigo-400/20 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20">Descargar plantilla</a>
     </div>
     <form wire:submit="import" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8" x-data="{ uploading: false }" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false" x-on:livewire-upload-error="uploading = false" x-on:livewire-upload-cancel="uploading = false">

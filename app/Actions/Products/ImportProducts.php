@@ -2,7 +2,10 @@
 
 namespace App\Actions\Products;
 
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Support\ProductVariantSpreadsheet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -36,6 +39,11 @@ class ImportProducts
                 $updated = 0;
                 $skipped = 0;
                 $batch = [];
+                $categories = [];
+                foreach (Category::query()->get(['id', 'name']) as $category) {
+                    $key = $this->normalize($category->name);
+                    $categories[$key] = array_key_exists($key, $categories) ? null : $category->id;
+                }
 
                 foreach ($reader->getSheetIterator() as $sheet) {
                     foreach ($sheet->getRowIterator() as $number => $row) {
@@ -51,8 +59,19 @@ class ImportProducts
                         $unitsPerContainer = $quantityValue === null
                             ? null
                             : $this->readUnits($values[$quantityValue] ?? null, $number);
+                        $categoryName = $header[2] ?? null;
+                        $categoryValue = $categoryName === null ? null : ($values[$categoryName] ?? null);
+                        if ($categoryValue !== null && ! is_string($categoryValue) && ! is_int($categoryValue) && ! is_float($categoryValue)) {
+                            throw new InvalidArgumentException("Fila {$number}: la categoría debe ser un texto.");
+                        }
+                        $categoryText = Str::squish((string) $categoryValue);
+                        $categoryId = $categoryText === '' ? null : ($categories[$this->normalize($categoryText)] ?? null);
+                        if ($categoryText !== '' && $categoryId === null) {
+                            throw new InvalidArgumentException("Fila {$number}: la categoría «{$categoryText}» no existe o no es única. Cárgala primero en Categorías.");
+                        }
+                        $colors = isset($header[3]) ? ProductVariantSpreadsheet::parse($values[$header[3]] ?? null, $number) : [];
 
-                        if ($name === '' && $unitsPerContainer === null) {
+                        if ($name === '' && $unitsPerContainer === null && $categoryText === '' && $colors === []) {
                             $skipped++;
 
                             continue;
@@ -72,10 +91,25 @@ class ImportProducts
                             continue;
                         }
                         $seen[$key] = true;
+                        $product = isset($existing[$key]) ? Product::findOrFail($existing[$key]) : null;
+                        $effectiveCategoryId = $categoryId ?? $product?->category_id;
+                        if ($colors !== [] && Category::find($effectiveCategoryId)?->allows_multiple_products) {
+                            throw new InvalidArgumentException("Fila {$number}: las categorías de múltiples productos no permiten variantes. Deja Variantes por color vacío.");
+                        }
 
-                        if (isset($existing[$key])) {
+                        if ($product !== null) {
+                            $changes = [];
                             if ($unitsPerContainer !== null) {
-                                Product::query()->whereKey($existing[$key])->update(['units_per_container' => $unitsPerContainer]);
+                                $changes['units_per_container'] = $unitsPerContainer;
+                            }
+                            if ($categoryId !== null) {
+                                $changes['category_id'] = $categoryId;
+                            }
+                            $variantsAdded = $this->addVariants($product, $colors);
+                            if ($changes !== [] || $variantsAdded > 0) {
+                                if ($changes !== []) {
+                                    Product::query()->whereKey($existing[$key])->update($changes);
+                                }
                                 $updated++;
                             } else {
                                 $skipped++;
@@ -84,10 +118,20 @@ class ImportProducts
                             continue;
                         }
 
+                        if ($colors !== []) {
+                            $product = Product::create(['name' => $name, 'units_per_container' => $unitsPerContainer, 'category_id' => $categoryId]);
+                            $existing[$key] = $product->id;
+                            $this->addVariants($product, $colors);
+                            $imported++;
+
+                            continue;
+                        }
+
                         $existing[$key] = true;
                         $batch[] = [
                             'name' => $name,
                             'units_per_container' => $unitsPerContainer,
+                            'category_id' => $categoryId,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ];
@@ -127,11 +171,15 @@ class ImportProducts
         }
 
         $hasUnitsHeader = in_array($headers[1] ?? null, ['unidades por contenedor', 'units per container'], true);
+        $hasCategoryHeader = in_array($headers[2] ?? null, ['categoría', 'categoria', 'category'], true);
+        $hasVariantsHeader = in_array($headers[3] ?? null, ['variantes por color', 'variantes', 'variants', 'colors'], true);
         foreach ($headers as $index => $header) {
             if (($index === 0 && ! in_array($header, ['nombre', 'name'], true))
                 || ($index === 1 && ! $hasUnitsHeader)
-                || $index > 1) {
-                throw new InvalidArgumentException('La primera fila debe contener Nombre y, opcionalmente, Unidades por contenedor. Descarga la plantilla para usar el formato correcto.');
+                || ($index === 2 && ! $hasCategoryHeader)
+                || ($index === 3 && ! $hasVariantsHeader)
+                || $index > 3) {
+                throw new InvalidArgumentException('Las columnas deben ser Nombre, Unidades por contenedor, Categoría y Variantes por color. También se aceptan archivos antiguos con las primeras una, dos o tres columnas. Descarga la plantilla para usar el formato correcto.');
             }
         }
 
@@ -139,7 +187,27 @@ class ImportProducts
             throw new InvalidArgumentException('El archivo no contiene encabezados. Descarga la plantilla para usar el formato correcto.');
         }
 
-        return $hasUnitsHeader ? [0 => 0, 1 => 1] : [0 => 0];
+        return $hasVariantsHeader ? [0 => 0, 1 => 1, 2 => 2, 3 => 3] : ($hasCategoryHeader ? [0 => 0, 1 => 1, 2 => 2] : ($hasUnitsHeader ? [0 => 0, 1 => 1] : [0 => 0]));
+    }
+
+    /** @param list<string> $colors */
+    private function addVariants(Product $product, array $colors): int
+    {
+        if ($colors === []) {
+            return 0;
+        }
+        $existing = $product->variants()->get()->mapWithKeys(fn (ProductVariant $variant): array => [Str::lower(trim($variant->color)) => true])->all();
+        $added = 0;
+        foreach ($colors as $color) {
+            $key = Str::lower($color);
+            if (! isset($existing[$key])) {
+                $product->variants()->create(['color' => $color]);
+                $existing[$key] = true;
+                $added++;
+            }
+        }
+
+        return $added;
     }
 
     /** @return array<int, mixed> */
