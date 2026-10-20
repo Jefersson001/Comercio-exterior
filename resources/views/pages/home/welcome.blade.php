@@ -12,7 +12,7 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-50 font-sans text-slate-950 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-white">
+<body class="erp-app min-h-screen bg-slate-50 font-sans text-slate-950 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-white">
     <div class="flex min-h-screen flex-col">
         <header class="border-b border-slate-200 bg-white/80 backdrop-blur-xl transition-colors duration-300 dark:border-white/10 dark:bg-slate-950/80">
             <nav class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-5" aria-label="Navegación principal">

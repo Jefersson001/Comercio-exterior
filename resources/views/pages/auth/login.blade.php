@@ -12,7 +12,7 @@
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="min-h-screen bg-slate-50 font-sans text-slate-950 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-white">
+<body class="erp-app min-h-screen bg-slate-50 font-sans text-slate-950 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-white">
     <div class="flex min-h-screen flex-col">
         <header class="border-b border-slate-200 bg-white/80 backdrop-blur-xl transition-colors duration-300 dark:border-white/10 dark:bg-slate-950/80">
             <nav class="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-5" aria-label="Navegación principal">
@@ -27,7 +27,7 @@
         <main class="relative isolate grid grow place-items-center overflow-hidden px-6 py-16">
             <div class="absolute top-1/3 left-1/4 -z-10 size-80 rounded-full bg-indigo-600/25 blur-3xl" aria-hidden="true"></div>
             <div class="absolute right-1/4 bottom-0 -z-10 size-72 rounded-full bg-cyan-500/15 blur-3xl" aria-hidden="true"></div>
-            <section class="w-full max-w-md rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-2xl shadow-slate-300/50 backdrop-blur-xl transition-colors duration-300 dark:border-white/10 dark:bg-white/[0.07] dark:shadow-black/40 sm:p-10">
+            <section data-auth-panel class="w-full max-w-md rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-2xl shadow-slate-300/50 backdrop-blur-xl transition-colors duration-300 dark:border-white/10 dark:bg-white/[0.07] dark:shadow-black/40 sm:p-10">
                 <div class="mb-8">
                     <span class="mb-6 grid size-12 place-items-center rounded-2xl bg-indigo-500 shadow-lg shadow-indigo-500/25"><svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6.75V5.625a3.375 3.375 0 0 0-6.75 0V6.75m-.75 0h7.5A2.25 2.25 0 0 1 18 9v9.75A2.25 2.25 0 0 1 15.75 21h-7.5A2.25 2.25 0 0 1 6 18.75V9a2.25 2.25 0 0 1 2.25-2.25Z"/></svg></span>
                     <h1 class="text-3xl font-semibold tracking-tight">Bienvenido de nuevo</h1>

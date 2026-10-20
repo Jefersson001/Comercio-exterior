@@ -3,7 +3,7 @@
         <div><p class="text-sm font-semibold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-300">{{ $foreignTrade ? 'Comercio exterior' : 'Comercio Internacional' }} / MSC</p><h2 class="mt-3 text-3xl font-semibold tracking-tight">{{ $shipmentId ? 'MSC No. '.$shipmentId : 'Crear MSC' }}</h2><p class="mt-3 leading-7 text-slate-600 dark:text-slate-400">Completa la información del embarque. Los campos con * son obligatorios.</p></div>
         <a href="{{ $this->mscRoute('index') }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Volver a la lista</a>
     </div>
-    <form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
+    <form data-record-form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
         <div class="mb-6 border-b border-slate-200 bg-slate-50/70 pb-6 dark:border-white/10 dark:bg-slate-950/30">
             <p class="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Status del embarque</p>
             <x-msc.status-bar :status="$status" interactive />
@@ -23,19 +23,19 @@
             <x-forms.input name="bl_house" label="BL House" wire:model="bl_house" maxlength="255" />
             <div>
                 <label for="factory_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Fábrica</label>
-                <select id="factory_id" wire:model="factory_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                <x-forms.select id="factory_id" wire:model="factory_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
                     <option value="">Sin fábrica asignada</option>
                     @foreach($factories as $factory)<option value="{{ $factory->id }}">{{ $factory->name }}</option>@endforeach
-                </select>
+                </x-forms.select>
                 @error('factory_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 @if($factories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Carga las fábricas desde Configuración → Fábricas.</p>@endif
             </div>
             @if(! $foreignTrade && ! $hasMultipleProducts)
             <div>
                 <label for="product_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Model *</label>
-                <select id="product_id" wire:model.live="product_id" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                <x-forms.select id="product_id" wire:model.live="product_id" required class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
                     <option value="">Selecciona un producto</option>@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }}</option>@endforeach
-                </select>
+                </x-forms.select>
                 @error('product_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 @if($products->isEmpty())<p class="mt-2 text-sm text-amber-600 dark:text-amber-300">Registra primero los modelos en Configuración → Productos.</p>@endif
             </div>
@@ -49,10 +49,10 @@
             <x-forms.input name="free_time" label="Free time (días) *" type="number" wire:model="free_time" min="0" max="2147483647" step="1" required />
             <div>
                 <label for="vessel_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Buque</label>
-                <select id="vessel_id" wire:model="vessel_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                <x-forms.select id="vessel_id" wire:model="vessel_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
                     <option value="">Sin buque asignado</option>
                     @foreach($vessels as $vessel)<option value="{{ $vessel->id }}">{{ $vessel->name }}</option>@endforeach
-                </select>
+                </x-forms.select>
                 @error('vessel_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                 @if($vessels->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Carga los buques desde Configuración → Buques.</p>@endif
             </div>
@@ -145,12 +145,12 @@
                                                 <div wire:key="msc-product-variant-line-{{ $index }}" class="flex items-center gap-3 border-b border-slate-200 px-4 py-1 last:border-b-0 dark:border-white/10">
                                                     <div class="min-w-0 flex-1">
                                                         <label for="product-variant-line-{{ $index }}" class="sr-only">Variante {{ $index + 1 }}</label>
-                                                        <select id="product-variant-line-{{ $index }}" wire:model="productVariantLines.{{ $index }}.product_variant_id" class="w-full border-0 bg-transparent px-0 py-2.5 text-sm text-slate-950 outline-none focus:ring-0 dark:text-white">
+                                                        <x-forms.select id="product-variant-line-{{ $index }}" wire:model="productVariantLines.{{ $index }}.product_variant_id" class="w-full border-0 bg-transparent px-0 py-2.5 text-sm text-slate-950 outline-none focus:ring-0 dark:text-white">
                                                             <option value="">Selecciona color...</option>
                                                             @foreach($productVariants as $variant)
                                                                 <option value="{{ $variant->id }}">{{ $variant->product->name }} ({{ $variant->color }})</option>
                                                             @endforeach
-                                                        </select>
+                                                        </x-forms.select>
                                                         @error("productVariantLines.$index.product_variant_id")<p role="alert" class="pb-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                                                     </div>
                                                     <div class="w-20 shrink-0">
@@ -213,7 +213,7 @@
                     </div>
             </div>
         @endif
-        <div class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
+        <div id="record-actions" data-form-actions class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
             @if($shipmentId)<button type="button" wire:click="delete" wire:confirm="¿Eliminar este registro MSC? Esta acción no se puede deshacer." wire:loading.attr="disabled" class="mr-auto rounded-xl border border-rose-200 px-5 py-3 font-semibold text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/20 dark:text-rose-300 dark:hover:bg-rose-500/10">Eliminar MSC</button>@endif
             <a href="{{ $this->mscRoute('index') }}" class="rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Cancelar</a>
             <button type="submit" wire:loading.attr="disabled" class="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-400 disabled:opacity-60"><span wire:loading.remove wire:target="save">Guardar MSC</span><span wire:loading wire:target="save">Guardando...</span></button>

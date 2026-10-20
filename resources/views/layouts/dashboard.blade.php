@@ -24,7 +24,7 @@
         @livewireStyles
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="min-h-screen bg-slate-50 font-sans text-slate-950 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-white">
+    <body class="erp-app min-h-screen bg-slate-50 font-sans text-slate-950 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-white">
         <div data-sidebar-overlay class="fixed inset-0 z-30 hidden bg-slate-950/60 backdrop-blur-sm lg:hidden" aria-hidden="true"></div>
 
         <aside id="dashboard-sidebar" data-sidebar class="fixed inset-y-0 left-0 z-40 flex w-72 -translate-x-full flex-col overflow-y-auto border-r border-slate-200 bg-white transition-transform duration-300 ease-out lg:translate-x-0 dark:border-white/10 dark:bg-slate-900">
@@ -32,7 +32,7 @@
                 <span class="grid size-10 place-items-center rounded-xl bg-indigo-500 font-semibold text-white shadow-lg shadow-indigo-500/25">C</span>
                 <div class="min-w-0">
                     <p class="truncate text-sm font-semibold leading-tight tracking-tight">{{ config('app.name') }}</p>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Panel administrativo</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Espacio de trabajo</p>
                 </div>
             </a>
 

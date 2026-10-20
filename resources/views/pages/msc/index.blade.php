@@ -4,13 +4,13 @@
         <div class="flex flex-wrap items-center gap-3">
             <a href="{{ $this->mscRoute('template') }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Descargar plantilla</a>
             <a href="{{ $this->mscRoute('export', $this->exportParameters()) }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Reporte Control Carga Interno</a>
-            <a href="{{ route('msc.export-direct', $this->exportParameters()) }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Reporte Control Carga Direct</a>
+            <a href="{{ $this->mscRoute('export-direct', $this->exportParameters()) }}" class="rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Reporte Control Carga Direct</a>
             <a href="{{ $this->mscRoute('import') }}" class="rounded-xl border border-indigo-200 px-5 py-3 text-sm font-semibold text-indigo-700 hover:bg-indigo-50 dark:border-indigo-400/20 dark:text-indigo-300 dark:hover:bg-indigo-500/10">Importar MSC</a>
             <a href="{{ $this->mscRoute('create') }}" class="rounded-xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400">Crear MSC</a>
         </div>
     </div>
     @if(session('status'))<div role="status" class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">{{ session('status') }}</div>@endif
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+    <div data-list-panel class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
         <div class="border-b border-slate-200 p-5 dark:border-white/10">
             <label for="msc-search" class="sr-only">Buscar MSC</label><input id="msc-search" type="search" wire:model.live.debounce.350ms="search" placeholder="Buscar por No., BL Master, BL House, Fábrica, Buque o Model..." class="w-full max-w-xl rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950/60 dark:text-white">
             <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">La exportación incluye todos los resultados de la búsqueda. Pulsa una fila para abrir su formulario.</p>
@@ -18,31 +18,31 @@
             <div class="grid gap-4 border-b border-slate-200 p-5 dark:border-white/10 md:grid-cols-3">
                 <div>
                     <label for="msc-status" class="mb-2 block text-sm font-medium">Status del embarque</label>
-                    <select id="msc-status" wire:model.live="status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-white">
+                    <x-forms.select id="msc-status" wire:model.live="status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-white">
                         <option value="">Todos los estados</option>
                         @foreach($statuses as $shipmentStatus)
                             <option value="{{ $shipmentStatus->value }}">{{ $shipmentStatus->value }}</option>
                         @endforeach
-                    </select>
+                    </x-forms.select>
                 </div>
                 @if($foreignTrade)
                 <div>
                     <label for="msc-status-bl" class="mb-2 block text-sm font-medium">Status BL</label>
-                    <select id="msc-status-bl" wire:model.live="status_bl" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-white">
+                    <x-forms.select id="msc-status-bl" wire:model.live="status_bl" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-white">
                         <option value="">Todos los estados BL</option>
                         @foreach($billOfLadingStatuses as $billOfLadingStatus)
                             <option value="{{ $billOfLadingStatus->value }}">{{ $billOfLadingStatus->value }}</option>
                         @endforeach
-                    </select>
+                    </x-forms.select>
                 </div>
                 <div>
                     <label for="msc-category" class="mb-2 block text-sm font-medium">Categoría</label>
-                    <select id="msc-category" wire:model.live="category_id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-white">
+                    <x-forms.select id="msc-category" wire:model.live="category_id" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950 dark:text-white">
                         <option value="">Todas las categorías</option>
                         @foreach($categories as $category)
                             <option value="{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
-                    </select>
+                    </x-forms.select>
                 </div>
                 @endif
                 @if($status !== '' || ($foreignTrade && ($status_bl !== '' || $category_id !== '')))
@@ -70,7 +70,7 @@
                                 <td class="whitespace-nowrap px-5 py-4"><span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">{{ $shipment->status_bl?->value ?? 'Sin status BL' }}</span></td>
                                 <td class="px-5 py-4">{{ $shipment->category?->name ?? 'Sin categoría' }}</td>
                             @endif
-                            <td class="px-5 py-4"><a href="{{ $this->mscRoute('edit', ['shipment' => $shipment]) }}" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">Editar</a></td>
+                            <td class="px-5 py-4"><x-workspace.record-actions :href="$this->mscRoute('edit', ['shipment' => $shipment])" :label="'MSC No. '.$shipment->id" /></td>
                         </tr>
                     @empty
                         <tr><td colspan="{{ $foreignTrade ? 16 : 14 }}" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron registros MSC</p><p class="mt-2 text-slate-500 dark:text-slate-400">Crea un registro o importa tu archivo de Excel.</p></td></tr>

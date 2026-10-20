@@ -109,6 +109,31 @@ class UserManagementTest extends TestCase
         $this->assertTrue(User::where('email', 'maria@example.com')->firstOrFail()->isAdministrator());
     }
 
+    public function test_new_users_without_permissions_can_access_the_original_home(): void
+    {
+        $this->actingAs($this->administrator());
+        Livewire::test(Form::class)
+            ->assertSet('access_international_trade', false)
+            ->assertSet('access_foreign_trade', false)
+            ->assertSet('access_configuration', false)
+            ->fill($this->fillForm())->call('save')->assertHasNoErrors();
+
+        $user = User::where('email', 'maria@example.com')->firstOrFail();
+        $this->assertFalse($user->access_international_trade);
+        $this->assertFalse($user->access_foreign_trade);
+        $this->assertFalse($user->access_configuration);
+        $this->actingAs($user)->get(route('dashboard'))->assertOk()
+            ->assertSee('Bienvenido, '.$user->full_name)
+            ->assertSee('Sesión activa')
+            ->assertDontSee('international-trade-menu')
+            ->assertDontSee('foreign-trade-menu')
+            ->assertDontSee('configuration-menu')
+            ->assertDontSee('Administrar usuarios');
+        foreach (['msc.index', 'foreign-trade.msc.index', 'configuration.products.index', 'configuration.users.index'] as $route) {
+            $this->get(route($route))->assertForbidden();
+        }
+    }
+
     public function test_user_fields_are_validated_and_email_must_be_unique(): void
     {
         $admin = $this->administrator();

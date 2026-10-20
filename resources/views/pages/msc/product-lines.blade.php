@@ -2,12 +2,12 @@
     <h3 class="mb-4 text-lg font-semibold">Productos del embarque</h3>
     @if($foreignTrade)
         <label for="category_id" class="mb-2 block text-sm font-medium">Categoría *</label>
-        <select id="category_id" wire:model.live="pendingCategoryId" wire:loading.attr="disabled" class="mb-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+        <x-forms.select id="category_id" wire:model.live="pendingCategoryId" wire:loading.attr="disabled" class="mb-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-white/10 dark:bg-slate-900 dark:text-white">
             <option value="">Selecciona una categoría</option>
             @foreach($categories as $category)
                 <option value="{{ $category->id }}">{{ $category->name }}</option>
             @endforeach
-        </select>
+        </x-forms.select>
         @error('category_id')<p role="alert" class="mb-3 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
         @error('pendingCategoryId')<p role="alert" class="mb-3 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
         @if($confirmingCategoryChange)
@@ -36,13 +36,13 @@
                     <tr wire:key="shipment-product-{{ $index }}" class="border-b border-slate-200 dark:border-white/10">
                         <td class="p-3">
                             @if($foreignTrade)
-                                <select aria-label="Producto línea {{ $index + 1 }}" wire:model.live="productLines.{{ $index }}.product_id" @disabled($category_id === null || $confirmingCategoryChange) class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                                <x-forms.select aria-label="Producto línea {{ $index + 1 }}" wire:model.live="productLines.{{ $index }}.product_id" :disabled="$category_id === null || $confirmingCategoryChange" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-white/10 dark:bg-slate-900 dark:text-white">
                                     <option value="">Selecciona un producto</option>
                                     @if(isset($line['product_id']) && $line['product_id'] && ! $products->contains('id', $line['product_id']))
                                         <option value="{{ $line['product_id'] }}">{{ $lineProducts->get($line['product_id'])?->name }} (revisa su categoría)</option>
                                     @endif
                                     @foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }}</option>@endforeach
-                                </select>
+                                </x-forms.select>
                                 @error("productLines.$index.product_id")<p role="alert" class="mt-2 text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                             @else
                                 {{ $lineProducts->get($line['product_id'])?->name }}

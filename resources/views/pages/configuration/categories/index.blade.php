@@ -18,7 +18,7 @@
     @if (session('status'))
         <div role="status" class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">{{ session('status') }}</div>
     @endif
-    <div class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
+    <div data-list-panel class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
         <div class="border-b border-slate-200 p-5 dark:border-white/10">
             <label for="category-search" class="sr-only">Buscar categorías</label>
             <input id="category-search" type="search" wire:model.live.debounce.350ms="search" placeholder="Buscar por nombre..." class="w-full max-w-lg rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-950/60 dark:text-white">
@@ -32,7 +32,7 @@
                         <tr wire:key="category-{{ $category->id }}" data-clickable-row data-href="{{ route('configuration.categories.edit', $category) }}" tabindex="0" aria-label="Editar {{ $category->name }}" class="cursor-pointer transition hover:bg-indigo-50/60 focus:bg-indigo-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-indigo-500/5 dark:focus:bg-indigo-500/5">
                             <td class="px-6 py-4"><a href="{{ route('configuration.categories.edit', $category) }}" class="font-semibold hover:text-indigo-600 hover:underline dark:hover:text-indigo-300">{{ $category->name }}</a></td>
                             <td class="px-6 py-4">{{ $category->allows_multiple_products ? 'Sí' : 'No' }}</td>
-                            <td class="px-6 py-4"><a href="{{ route('configuration.categories.edit', $category) }}" aria-label="Editar {{ $category->name }}" class="rounded-lg px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 dark:text-indigo-300 dark:hover:bg-indigo-500/10">Editar</a></td>
+                            <td class="px-6 py-4"><x-workspace.record-actions :href="route('configuration.categories.edit', $category)" :label="$category->name" /></td>
                         </tr>
                     @empty
                         <tr><td colspan="3" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron categorías</p><p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Prueba con otra búsqueda o crea una categoría.</p></td></tr>

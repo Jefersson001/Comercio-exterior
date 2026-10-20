@@ -8,7 +8,7 @@
         <a href="{{ route('configuration.users.index') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Volver a la lista</a>
     </div>
 
-    <form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
+    <form data-record-form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
         <div class="mb-8 border-b border-slate-200 pb-6 dark:border-white/10">
             <p class="text-xs font-semibold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-300">Información del usuario</p>
             <h3 class="mt-2 text-2xl font-semibold">{{ $userId ? trim($name.' '.$last_name) : 'Nuevo usuario' }}</h3>
@@ -22,9 +22,9 @@
             <x-forms.input name="email" label="Correo electrónico *" type="email" wire:model="email" autocomplete="off" maxlength="255" required />
             <div>
                 <label for="role" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Rol *</label>
-                <select id="role" wire:model="role" required @disabled($userId === auth()->id()) class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-60 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                <x-forms.select id="role" wire:model="role" required :disabled="$userId === auth()->id()" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 disabled:opacity-60 dark:border-white/10 dark:bg-slate-900 dark:text-white">
                     @foreach ($roles as $userRole)<option value="{{ $userRole->value }}">{{ $userRole->label() }}</option>@endforeach
-                </select>
+                </x-forms.select>
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">El administrador puede crear y administrar usuarios.</p>
                 @error('role')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
             </div>
@@ -39,7 +39,7 @@
             <div class="sm:col-span-2 rounded-xl border border-slate-200 p-5 dark:border-white/10">
                 <h4 class="font-semibold">Permisos de acceso</h4>
                 <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Activa los accesos que tendrá esta cuenta. Configuración permite administrar Productos, Categorías, Fábricas y Buques. Usuarios es exclusivo de administradores. Los administradores conservan acceso completo.</p>
-                <div class="mt-4 flex flex-wrap gap-5">
+                <div class="permission-grid mt-4 grid gap-3 lg:grid-cols-3">
                     <label class="inline-flex items-center gap-3 text-sm font-semibold"><input type="checkbox" wire:model="access_international_trade" class="size-5 rounded border-slate-300 text-indigo-600">Acceso a Comercio Internacional</label>
                     <label class="inline-flex items-center gap-3 text-sm font-semibold"><input type="checkbox" wire:model="access_foreign_trade" class="size-5 rounded border-slate-300 text-indigo-600">Acceso a Comercio Exterior</label>
                     <label class="inline-flex items-center gap-3 text-sm font-semibold"><input type="checkbox" wire:model="access_configuration" class="size-5 rounded border-slate-300 text-indigo-600">Acceso a Configuración</label>
@@ -50,7 +50,7 @@
             </div>
         </fieldset>
 
-        <div class="mt-8 flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
+        <div id="record-actions" data-form-actions class="mt-8 flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
             <a href="{{ route('configuration.users.index') }}" class="rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Cancelar</a>
             <button type="submit" wire:loading.attr="disabled" class="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 disabled:opacity-60"><span wire:loading.remove wire:target="save">{{ $userId ? 'Guardar cambios' : 'Crear usuario' }}</span><span wire:loading wire:target="save">Guardando...</span></button>
         </div>

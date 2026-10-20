@@ -5,7 +5,9 @@ const dashboardContent = document.querySelector('[data-dashboard-content]');
 
 if (sidebar && sidebarOverlay && sidebarToggle && dashboardContent) {
     const sidebarPreference = document.documentElement.dataset.sidebarState;
-    let isSidebarOpen = sidebarPreference ? sidebarPreference === 'open' : window.matchMedia('(min-width: 1024px)').matches;
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    let desktopOpen = sidebarPreference ? sidebarPreference === 'open' : true;
+    let isSidebarOpen = desktop.matches && desktopOpen;
 
     const updateSidebar = () => {
         document.documentElement.dataset.sidebarState = isSidebarOpen ? 'open' : 'closed';
@@ -18,7 +20,10 @@ if (sidebar && sidebarOverlay && sidebarToggle && dashboardContent) {
 
     const rememberSidebar = () => {
         try {
-            localStorage.setItem('dashboard-sidebar', isSidebarOpen ? 'open' : 'closed');
+            if (desktop.matches) {
+                desktopOpen = isSidebarOpen;
+                localStorage.setItem('dashboard-sidebar', isSidebarOpen ? 'open' : 'closed');
+            }
         } catch {
             // Keep the toggle usable when browser storage is unavailable.
         }
@@ -33,13 +38,20 @@ if (sidebar && sidebarOverlay && sidebarToggle && dashboardContent) {
     sidebarOverlay.addEventListener('click', () => {
         isSidebarOpen = false;
         rememberSidebar();
+        sidebarToggle.focus();
     });
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && isSidebarOpen) {
             isSidebarOpen = false;
             rememberSidebar();
+            sidebarToggle.focus();
         }
+    });
+
+    desktop.addEventListener('change', () => {
+        isSidebarOpen = desktop.matches && desktopOpen;
+        updateSidebar();
     });
 
     updateSidebar();
