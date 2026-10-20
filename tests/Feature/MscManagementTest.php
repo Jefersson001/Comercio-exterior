@@ -50,7 +50,7 @@ class MscManagementTest extends TestCase
         $this->get(route('foreign-trade.msc.index'))->assertOk()
             ->assertSee('Reporte Control Carga Interno')
             ->assertSee('Reporte Control Carga Direct')
-            ->assertSee('href="'.route('foreign-trade.msc.export', ['search' => '']).'"', false);
+            ->assertSee('href="'.route('msc.export', ['search' => '']).'"', false);
         $response->assertSee('data-href="'.route('msc.edit', $shipment).'"', false);
         $this->get(route('msc.create'))->assertOk()->assertSee('Se asignará al guardar');
         $this->get(route('msc.edit', $shipment))->assertOk()->assertSee('MSC No. '.$shipment->id);

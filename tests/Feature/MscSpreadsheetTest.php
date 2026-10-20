@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Actions\Msc\ImportMscShipments;
+use App\Enums\MscBillOfLadingStatus;
+use App\Enums\MscShipmentStatus;
 use App\Livewire\Pages\Msc\Import;
+use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
 use App\Models\Product;
-use App\Models\Vessel;
 use App\Models\User;
+use App\Models\Vessel;
 use App\Support\MscFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -149,10 +152,10 @@ class MscSpreadsheetTest extends TestCase
 
         $response = $this->get(route('msc.export'))->assertOk();
         $rows = $this->read($response->baseResponse->getFile()->getPathname());
-        $this->assertSame('Cant contenedores', $rows[0][7]);
-        $this->assertSame('Cant Unidades', $rows[0][8]);
-        $this->assertSame(70, $rows[1][8]);
-        $this->assertSame(120, $rows[2][8]);
+        $this->assertSame('CANT.', $rows[0][10]);
+        $this->assertSame('UNID TOTALES', $rows[0][14]);
+        $this->assertSame(70, $rows[1][14]);
+        $this->assertSame(120, $rows[2][14]);
     }
 
     public function test_import_rejects_unit_totals_above_product_container_capacity(): void
@@ -177,8 +180,8 @@ class MscSpreadsheetTest extends TestCase
 
         $response = $this->get(route('msc.export'))->assertOk();
         $rows = $this->read($response->baseResponse->getFile()->getPathname());
-        $this->assertSame('Status', $rows[0][12]);
-        $this->assertSame('PUERTO', $rows[1][12]);
+        $this->assertSame('STATUS', $rows[0][6]);
+        $this->assertSame('PUERTO', $rows[1][6]);
     }
 
     public function test_original_workbook_layout_titles_notes_totals_and_extra_columns_are_supported(): void
@@ -238,19 +241,115 @@ class MscSpreadsheetTest extends TestCase
         $this->assertSame([array_values(MscFields::HEADERS)], $this->read($response->baseResponse->getFile()->getPathname()));
     }
 
-    public function test_export_includes_all_rows_and_can_be_reimported_without_duplicates(): void
+    public function test_internal_report_includes_ordered_fields_and_formats_containers_and_colors(): void
     {
-        MscShipment::factory()->count(21)->create();
-        $response = $this->get(route('msc.export'))->assertOk()->assertDownload();
+        $category = Category::factory()->create(['name' => 'Confección']);
+        $factory = Factory::factory()->create(['name' => 'Proveedor Uno']);
+        $vessel = Vessel::factory()->create(['name' => 'Buque Aurora']);
+        $product = Product::firstOrFail();
+        $product->update(['name' => 'Modelo Camisa', 'units_per_container' => 12]);
+        $red = $product->variants()->create(['color' => 'rojo']);
+        $black = $product->variants()->create(['color' => 'negro']);
+        $white = $product->variants()->create(['color' => 'blanco']);
+        $shipment = MscShipment::factory()->create([
+            'bl_master' => 'MASTER-1',
+            'bl_house' => 'HOUSE-1',
+            'factory_id' => $factory->id,
+            'product_id' => $product->id,
+            'category_id' => $category->id,
+            'units_qty' => 17,
+            'vessel_id' => $vessel->id,
+            'released' => 'Flete marítimo',
+            'status' => MscShipmentStatus::Puerto,
+            'status_bl' => MscBillOfLadingStatus::Released,
+            'exp_number' => 'EXP-001',
+            'dua_intr' => 'DUA-002',
+            'seabridge' => 'SEA-003',
+            'sencamer' => 'SEN-004',
+            'comex' => 'COM-005',
+            'shipment_year' => '2026',
+            'etd_vnzl' => '2026-10-21',
+            'eta_vnzl' => '2026-10-25',
+            'port' => 'La Guaira',
+            'trasegado' => 'No',
+            'in_bond_date' => '2026-10-22',
+            'free_days' => 10,
+            'delay_date' => '2026-10-26',
+            'legal_abandonment_date' => '2026-11-26',
+            'registration_date' => '2026-10-23',
+            'phase_two_recognition_date' => '2026-10-24',
+            'validation_date' => '2026-10-25',
+            'plant_receipt_date' => '2026-10-26',
+            'location' => 'Almacén',
+            'return_date' => '2026-10-27',
+            'original_docs_receipt_date' => '2026-10-28',
+            'aa_instructions_sent_date' => '2026-10-29',
+            'bl_release_date' => '2026-10-30',
+            'sencamer_request_date' => '2026-10-31',
+            'sencamer_receipt_date' => '2026-11-01',
+            'comex_request_date' => '2026-11-02',
+            'comex_receipt_date' => '2026-11-03',
+            'customs_agent_status' => 'En revisión',
+            'customs_agent_observation' => 'Documentación pendiente',
+        ]);
+        $shipment->containers()->createMany([
+            ['name' => 'CONT-ONE'],
+            ['name' => 'CONT-TWO'],
+        ]);
+        $shipment->productVariantLines()->createMany([
+            ['product_variant_id' => $red->id, 'quantity' => 12],
+            ['product_variant_id' => $black->id, 'quantity' => 0],
+            ['product_variant_id' => $white->id, 'quantity' => 5],
+        ]);
+
+        $filename = 'reporte-control-carga-interno-'.now()->format('Y-m-d').'.xlsx';
+        $response = $this->get(route('msc.export'))->assertOk()->assertDownload($filename);
         $path = $response->baseResponse->getFile()->getPathname();
-        $file = UploadedFile::fake()->createWithContent('msc.xlsx', file_get_contents($path));
+        $workbook = new \ZipArchive;
+        $this->assertSame(true, $workbook->open($path));
+        $styles = $workbook->getFromName('xl/styles.xml');
+        $workbook->close();
+        $this->assertIsString($styles);
+        $this->assertStringContainsString('203764', $styles);
+        $this->assertStringContainsString('008000', $styles);
+        $this->assertStringContainsString('00B0E0', $styles);
+        $this->assertStringContainsString('404040', $styles);
+        $this->assertStringContainsString('FFFFFFFF', $styles);
+        $this->assertStringContainsString('<sz val="8"/>', $styles);
+
         $rows = $this->read($path);
-        $this->assertCount(22, $rows);
-        $this->assertSame(array_values(MscFields::HEADERS), $rows[0]);
-        $this->assertSame(1, $rows[1][0]);
-        $this->assertSame('2026-10-01', $rows[1][1]);
-        Livewire::test(Import::class)->set('file', $file)->call('import')->assertHasNoErrors();
-        $this->assertDatabaseCount('msc_shipments', 21);
+        $this->assertCount(2, $rows);
+        $this->assertSame([
+            'N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'ESTATUS BL', 'STATUS',
+            'BL Master', 'BL House', 'CONTENEDOR', 'CANT.', 'TIPO', 'MODELO/CONDICION',
+            'PROVEEDOR', 'UNID TOTALES', 'BUQUE', 'SERVICIO FLETE', 'AÑO', 'COLORES', 'ETD',
+            'ETA VZLA', 'PUERTO', 'TRASEGADO', 'IN BOND', 'DIAS LIBRES', 'DEMORA', 'ABANDONO LEGAL',
+            'REGISTRO', 'RECONOCIMIENTO', 'VALIDACION', 'RECEPCIÓN PLANTA', 'UBICACIÓN', 'DEVOLUCION',
+            'FECHA RECEP DE DOC ORIG', 'INSTRUCCIONES ENVIADAS AA', 'FECHA LIBERACION BL',
+            'FECHA DE SOLICITUD DE SENCAMER', 'FECHA RECEPCION DE SENCAMER', 'FECHA SOLICITUD DE COMEX',
+            'FECHA RECEPCION DE COMEX', 'STATUS AGENTE DE ADUANA', 'OBSERVACION AGENTE DE ADUANA',
+        ], $rows[0]);
+        $this->assertSame('EXP-001', $rows[1][0]);
+        $this->assertSame('BL LIBERADO OK', $rows[1][5]);
+        $this->assertSame('PUERTO', $rows[1][6]);
+        $this->assertSame('MASTER-1', $rows[1][7]);
+        $this->assertSame("CONT-ONE\nCONT-TWO", $rows[1][9]);
+        $this->assertSame(2, $rows[1][10]);
+        $this->assertSame('Confección', $rows[1][11]);
+        $this->assertSame('Modelo Camisa', $rows[1][12]);
+        $this->assertSame('Proveedor Uno', $rows[1][13]);
+        $this->assertSame(17, $rows[1][14]);
+        $this->assertSame('Buque Aurora', $rows[1][15]);
+        $this->assertSame('Flete marítimo', $rows[1][16]);
+        $this->assertSame('2026', $rows[1][17]);
+        $this->assertSame('12 rojo // negro // 5 blanco', $rows[1][18]);
+        $this->assertSame('2026-10-01', $rows[1][19]);
+        $this->assertSame('2026-10-25', $rows[1][20]);
+        $this->assertSame('2026-10-23', $rows[1][27]);
+        $this->assertSame('2026-10-28', $rows[1][33]);
+        $this->assertSame('2026-11-03', $rows[1][39]);
+        $this->assertSame('En revisión', $rows[1][40]);
+        $this->assertSame('Documentación pendiente', $rows[1][41]);
     }
 
     public function test_export_respects_search_by_product_and_factory(): void
@@ -261,7 +360,7 @@ class MscSpreadsheetTest extends TestCase
         $response = $this->get(route('msc.export', ['search' => 'Special Factory']))->assertOk();
         $rows = $this->read($response->baseResponse->getFile()->getPathname());
         $this->assertCount(2, $rows);
-        $this->assertSame($matched->id, $rows[1][0]);
+        $this->assertSame($matched->bl_master, $rows[1][7]);
     }
 
     public function test_import_file_is_required_and_bad_headers_are_rejected(): void

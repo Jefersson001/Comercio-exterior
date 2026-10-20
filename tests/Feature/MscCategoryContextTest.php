@@ -584,12 +584,16 @@ class MscCategoryContextTest extends TestCase
         foreach (['template', 'export'] as $action) {
             $international = $this->downloadRows('msc.'.$action);
             $exterior = $this->downloadRows('foreign-trade.msc.'.$action);
-            $this->assertCount(13, $international[0]);
             $this->assertCount(14, $exterior[0]);
             $this->assertSame('Categoría', $exterior[0][13]);
             if ($action === 'export') {
+                $this->assertCount(42, $international[0]);
+                $this->assertSame('TIPO', $international[0][11]);
+                $this->assertSame('Spare parts', $international[1][11]);
                 $this->assertSame('Spare parts', $exterior[1][13]);
-                $this->assertCount(13, $international[1]);
+                $this->assertCount(42, $international[1]);
+            } else {
+                $this->assertCount(13, $international[0]);
             }
         }
     }
