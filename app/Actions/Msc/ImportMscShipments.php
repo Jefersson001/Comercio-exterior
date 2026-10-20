@@ -2,6 +2,8 @@
 
 namespace App\Actions\Msc;
 
+use App\Enums\MscBillOfLadingStatus;
+use App\Enums\MscShipmentStatus;
 use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
@@ -29,10 +31,11 @@ class ImportMscShipments
     {
         $reader = new Reader(new Options(SHOULD_PRESERVE_EMPTY_ROWS: true));
         $reader->open($path);
+        $sheetName = null;
         try {
-            return DB::transaction(function () use ($reader, $dryRun, $foreignTrade): array {
+            return DB::transaction(function () use ($reader, $dryRun, $foreignTrade, &$sheetName): array {
                 $catalogs = $this->catalogs();
-                $shipments = MscShipment::query()->get(['id', 'bl_master', 'bl_house'])
+                $shipments = MscShipment::query()->get()
                     ->mapWithKeys(fn (MscShipment $shipment): array => [
                         $this->billOfLadingKey($shipment->bl_master, $shipment->bl_house) => $shipment,
                     ])->all();
@@ -43,6 +46,7 @@ class ImportMscShipments
 
                 foreach ([false, true] as $foreignTradeSheet) {
                     foreach ($reader->getSheetIterator() as $sheet) {
+                        $sheetName = $sheet->getName();
                         $header = null;
                         foreach ($sheet->getRowIterator() as $number => $row) {
                             if ($header === null) {
@@ -103,6 +107,8 @@ class ImportMscShipments
                     'skipped' => $skipped,
                 ];
             });
+        } catch (InvalidArgumentException $exception) {
+            throw new InvalidArgumentException($sheetName === null ? $exception->getMessage() : 'Hoja «'.$sheetName.'»: '.$exception->getMessage(), 0, $exception);
         } finally {
             $reader->close();
         }
@@ -268,13 +274,23 @@ class ImportMscShipments
         }
         $unitsQty = $this->text($raw['units_qty'] ?? null);
         $status = $this->text($raw['status'] ?? null);
+        $factoryName = $this->text($raw['factory'] ?? null);
+        $vesselName = $this->text($raw['vessel'] ?? null);
+        $factoryId = $catalogs['factories'][$this->normalize($factoryName)] ?? null;
+        $vesselId = $catalogs['vessels'][$this->normalize($vesselName)] ?? null;
+        if ($factoryName !== '' && $factoryId === null) {
+            throw new InvalidArgumentException("Fila {$number}: la fábrica «{$factoryName}» no existe o no es única. Regístrala primero en Fábricas. No se guardaron cambios.");
+        }
+        if ($vesselName !== '' && $vesselId === null) {
+            throw new InvalidArgumentException("Fila {$number}: el buque «{$vesselName}» no existe o no es único. Regístralo primero en Buques. No se guardaron cambios.");
+        }
         $data = [
             'etd' => $this->date($raw['etd'] ?? null),
             'eta' => $this->date($raw['eta'] ?? null),
             'bl_master' => $blMaster,
             'bl_house' => $blHouse,
-            'factory_id' => $catalogs['factories'][$this->normalize($this->text($raw['factory'] ?? null))] ?? null,
-            'vessel_id' => $catalogs['vessels'][$this->normalize($this->text($raw['vessel'] ?? null))] ?? null,
+            'factory_id' => $factoryId,
+            'vessel_id' => $vesselId,
             'product_id' => $product['id'],
             'container_qty' => $this->text($raw['container_qty'] ?? null),
             'units_qty' => $unitsQty === '' ? null : $unitsQty,
@@ -291,8 +307,10 @@ class ImportMscShipments
             }
             $data['category_id'] = $categoryId;
         }
+        $this->validateProductCategory($product['id'], $data['category_id'] ?? $existing?->category_id, $number);
 
         $rules = MscFields::rules(foreignTrade: $foreignTrade && array_key_exists('category', $raw));
+        $this->validateStatuses($data, $number);
         $rules['bl_master'] = ['required', 'string', 'max:255'];
         $validator = Validator::make($data, $rules, attributes: MscFields::labels());
         if ($validator->fails()) {
@@ -451,6 +469,7 @@ class ImportMscShipments
             throw new InvalidArgumentException("Fila {$number}: las categorías de múltiples productos no permiten variantes. Retira el contenido de COLORES antes de importar.");
         }
         $validatorRules = MscFields::rules($shipment->id, foreignTrade: true, blHouse: $blHouse);
+        $this->validateStatuses($data, $number);
         $validatorRules = array_intersect_key($validatorRules, $data);
         $validator = Validator::make($data, $validatorRules, attributes: MscFields::labels());
         if ($validator->fails()) {
@@ -458,6 +477,7 @@ class ImportMscShipments
         }
 
         $productId = (int) ($data['product_id'] ?? $shipment->product_id);
+        $this->validateProductCategory($productId, $categoryId, $number);
         $product = $catalogs['productsById'][$productId] ?? null;
         $this->validateCapacity($number, $data, $product);
         $containerLines = $containerValue === '' ? null : $this->containerNames($containerValue);
@@ -485,6 +505,29 @@ class ImportMscShipments
         $shipments[$key] = $shipment;
         if (! isset($importedKeys[$key])) {
             $updatedKeys[$key] = true;
+        }
+    }
+
+    /** @param array<string, mixed> $data */
+    private function validateStatuses(array $data, int $number): void
+    {
+        foreach (['status' => [MscShipmentStatus::class, 'Status del embarque'], 'status_bl' => [MscBillOfLadingStatus::class, 'Status BL']] as $field => [$enum, $label]) {
+            $value = $data[$field] ?? '';
+            if ($value !== '' && $value !== null && $enum::tryFrom($value) === null) {
+                throw new InvalidArgumentException("Fila {$number}: {$label} «{$value}» no es válido. Selecciona una opción de la lista de la plantilla. No se guardaron cambios.");
+            }
+        }
+    }
+
+    private function validateProductCategory(int $productId, ?int $categoryId, int $number): void
+    {
+        if ($categoryId === null) {
+            return;
+        }
+        $product = Product::find($productId);
+        if ($product !== null && $product->category_id !== $categoryId) {
+            $category = Category::find($categoryId);
+            throw new InvalidArgumentException("Fila {$number}: el producto «{$product->name}» no pertenece a la categoría «{$category?->name}». Selecciona un producto relacionado con esa categoría. No se guardaron cambios.");
         }
     }
 

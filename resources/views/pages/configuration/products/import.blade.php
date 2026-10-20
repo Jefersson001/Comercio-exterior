@@ -9,6 +9,7 @@
     </div>
     <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm leading-7 text-indigo-800 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200">
         <p class="font-semibold">Prepara tu archivo</p>
+        <p class="mt-2">La plantilla incluye listas desplegables con productos, categorías y colores existentes. La categoría debe seleccionarse de la lista; puedes escribir nombres de productos y colores nuevos. Si falta una categoría, regístrala primero y descarga nuevamente la plantilla. No edites la hoja Listas.</p>
         <ol class="mt-2 list-inside list-decimal space-y-1">
             <li>Descarga la plantilla y conserva las columnas <strong>Nombre</strong>, <strong>Unidades por contenedor</strong>, <strong>Categoría</strong> y <strong>Variantes por color</strong>. La categoría debe existir en el sistema.</li>
             <li>Escribe los colores separados por <strong>//</strong> o por saltos de línea, por ejemplo: <strong>Rojo // Azul // Blanco</strong>. Cada color admite hasta 255 caracteres. En categorías múltiples, deja las variantes vacías.</li>

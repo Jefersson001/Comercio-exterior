@@ -9,6 +9,7 @@
     </div>
     <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm leading-7 text-indigo-800 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200">
         <p class="font-semibold">Prepara tu archivo</p>
+        <p class="mt-2">La plantilla incluye una lista con las fábricas existentes para evitar errores al escribir. También puedes registrar nombres nuevos. No edites la hoja Listas.</p>
         <ol class="mt-2 list-inside list-decimal space-y-1">
             <li>Descarga la plantilla y conserva la columna <strong>Nombre</strong>.</li>
             <li>Escribe una fábrica por fila debajo del encabezado.</li>

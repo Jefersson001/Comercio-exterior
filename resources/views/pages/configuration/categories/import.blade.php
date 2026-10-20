@@ -9,6 +9,7 @@
     </div>
     <div class="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50 p-6 text-sm leading-7 text-indigo-800 dark:border-indigo-500/20 dark:bg-indigo-500/10 dark:text-indigo-200">
         <p class="font-semibold">Prepara tu archivo</p>
+        <p class="mt-2">La plantilla incluye las categorías existentes como sugerencias y un selector Sí/No. Puedes escribir nombres de categorías nuevas. No edites la hoja Listas; descarga una plantilla nueva para actualizar las opciones.</p>
         <ol class="mt-2 list-inside list-decimal space-y-1">
             <li>Descarga la plantilla y conserva las columnas <strong>Nombre</strong> y <strong>Es para múltiples productos</strong> (Sí o No).</li>
             <li>Escribe una categoría por fila debajo del encabezado (máximo 255 caracteres).</li>

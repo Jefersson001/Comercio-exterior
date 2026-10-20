@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Support\SpreadsheetLayout;
+use App\Support\SpreadsheetTemplateLists;
 use Illuminate\Http\Request;
 use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
+use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -15,7 +17,7 @@ class CategorySpreadsheetController extends Controller
 {
     public function template(): BinaryFileResponse
     {
-        return $this->download([], 'plantilla-categorías.xlsx');
+        return $this->download([], 'plantilla-categorías.xlsx', true);
     }
 
     public function export(Request $request): BinaryFileResponse
@@ -30,11 +32,17 @@ class CategorySpreadsheetController extends Controller
     }
 
     /** @param iterable<Category> $names */
-    private function download(iterable $names, string $filename): BinaryFileResponse
+    private function download(iterable $names, string $filename, bool $template = false): BinaryFileResponse
     {
         $path = tempnam(sys_get_temp_dir(), 'categorías-');
         abort_if($path === false, 500, 'No se pudo preparar la descarga.');
-        $writer = new Writer;
+        $options = new Options;
+        $lists = $template ? new SpreadsheetTemplateLists($options) : null;
+        if ($lists !== null) {
+            $lists->dropdown(0, 0, $lists->formula($lists->source('Categorías existentes', Category::orderBy('name')->pluck('name')->all())), 'categoría', false);
+            $lists->dropdown(0, 1, $lists->formula($lists->source('Sí / No', ['Sí', 'No'])), 'Sí o No');
+        }
+        $writer = new Writer($options);
 
         try {
             $writer->openToFile($path);
@@ -44,6 +52,7 @@ class CategorySpreadsheetController extends Controller
                 foreach ($names as $category) {
                     $writer->addRow(new Row([new StringCell($category->name), new StringCell($category->allows_multiple_products ? 'Sí' : 'No')]));
                 }
+                $lists?->write($writer);
             } finally {
                 $writer->close();
             }

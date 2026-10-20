@@ -4,10 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Enums\MscBillOfLadingStatus;
 use App\Enums\MscShipmentStatus;
+use App\Models\Category;
+use App\Models\Factory;
 use App\Models\MscShipment;
+use App\Models\Product;
+use App\Models\Vessel;
 use App\Support\MscFields;
 use App\Support\MscReportFields;
 use App\Support\SpreadsheetLayout;
+use App\Support\SpreadsheetTemplateLists;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use OpenSpout\Common\Entity\Cell\NumericCell;
@@ -15,6 +20,7 @@ use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Color;
 use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Throwable;
@@ -26,7 +32,9 @@ class MscSpreadsheetController extends Controller
         $path = tempnam(sys_get_temp_dir(), 'msc-template-');
         abort_if($path === false, 500, 'No se pudo preparar la plantilla MSC.');
 
-        $writer = new Writer;
+        $options = new Options;
+        $lists = $this->templateLists($options);
+        $writer = new Writer($options);
         try {
             $writer->openToFile($path);
             try {
@@ -55,6 +63,8 @@ class MscSpreadsheetController extends Controller
                 SpreadsheetLayout::configure($writer->getCurrentSheet(), 'Instrucciones', 2, [2 => 100]);
                 $writer->addRow(Row::fromValuesWithStyle(['Campo', 'Indicaciones'], SpreadsheetLayout::header()));
                 foreach ([
+                    ['Listas desplegables', 'Selecciona los catálogos existentes desde las listas de las celdas. En Comercio Exterior, selecciona TIPO antes del modelo para filtrar los productos por categoría. La hoja Listas es una referencia: no la edites.'],
+                    ['Catálogos desactualizados', 'Si falta una opción, regístrala en Configuración y descarga una plantilla nueva. Pegar datos puede omitir las alertas de Excel; la importación volverá a validar cada fila.'],
                     ['Uso', 'Esta plantilla importa un producto por embarque. Los embarques múltiples se administran en Comercio Exterior → MSC. Los reportes son archivos de consulta; su hoja Detalle productos no es una plantilla de importación.'],
                     ['Identificación', 'Usa el mismo BL Master y BL House en ambas hojas. Para crear embarques, completa primero Comercio Internacional. No incluyas títulos ni filas de totales.'],
                     ['Cant Unidades', 'Si no se conocen las unidades, deja la celda vacía. Una celda vacía no significa cero.'],
@@ -66,6 +76,7 @@ class MscSpreadsheetController extends Controller
                 ] as $instruction) {
                     $writer->addRow(Row::fromValuesWithStyle($instruction, SpreadsheetLayout::body()));
                 }
+                $lists->write($writer);
             } finally {
                 $writer->close();
             }
@@ -78,6 +89,36 @@ class MscSpreadsheetController extends Controller
         clearstatcache(true, $path);
 
         return response()->download($path, 'plantilla-msc.xlsx', ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])->deleteFileAfterSend();
+    }
+
+    private function templateLists(Options $options): SpreadsheetTemplateLists
+    {
+        $lists = new SpreadsheetTemplateLists($options);
+        $categories = Category::orderBy('name')->get();
+        $products = Product::with(['category', 'variants'])->orderBy('name')->get();
+        $productSource = $lists->formula($lists->source('Productos', $products->pluck('name')->all()));
+        $factorySource = $lists->formula($lists->source('Fábricas', Factory::orderBy('name')->pluck('name')->all()));
+        $vesselSource = $lists->formula($lists->source('Buques', Vessel::orderBy('name')->pluck('name')->all()));
+        $categorySource = $lists->formula($lists->source('Categorías', $categories->pluck('name')->all()));
+        $statusSource = $lists->formula($lists->source('Status del embarque', array_column(MscShipmentStatus::options(), 'value')));
+        $blSource = $lists->formula($lists->source('Status BL', array_column(MscBillOfLadingStatus::cases(), 'value')));
+        $groups = [];
+        foreach ($categories as $category) {
+            $groups[$category->name] = $products->where('category_id', $category->id)->pluck('name')->values()->all();
+        }
+        $colors = [];
+        foreach ($products as $product) {
+            $colors[$product->name] = $product->category?->allows_multiple_products ? [] : $product->variants->pluck('color')->all();
+        }
+        foreach ([[0, 5, $factorySource, 'fábrica'], [0, 6, $productSource, 'producto'], [0, 10, $vesselSource, 'buque'], [0, 12, $statusSource, 'estado'], [1, 5, $blSource, 'Status BL'], [1, 6, $statusSource, 'estado'], [1, 11, $categorySource, 'categoría'], [1, 12, $lists->dependent('$L2', 'Productos por categoría', $groups), 'producto'], [1, 13, $factorySource, 'fábrica'], [1, 15, $vesselSource, 'buque']] as [$sheet, $column, $formula, $label]) {
+            $lists->dropdown($sheet, $column, $formula, $label);
+        }
+        $lists->dropdown(1, 18, $lists->dependent('$M2', 'Colores por producto', $colors), 'color', false);
+        foreach ([[0, 7, 1], [0, 8, 1], [0, 9, 0], [1, 10, 1], [1, 14, 1], [1, 24, 0]] as [$sheet, $column, $minimum]) {
+            $lists->number($sheet, $column, $minimum);
+        }
+
+        return $lists;
     }
 
     public function export(Request $request): BinaryFileResponse

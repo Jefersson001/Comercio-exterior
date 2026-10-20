@@ -3,16 +3,22 @@
 namespace Tests\Feature;
 
 use App\Actions\Categories\ImportCategories;
+use App\Actions\Msc\ImportMscShipments;
 use App\Actions\Products\ImportProducts;
 use App\Enums\MscBillOfLadingStatus;
 use App\Enums\MscShipmentStatus;
 use App\Models\Category;
+use App\Models\Factory;
 use App\Models\MscShipment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\Vessel;
+use App\Support\MscFields;
+use App\Support\MscReportFields;
 use App\UserRole;
 use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Row;
@@ -248,5 +254,154 @@ class SpreadsheetAuditTest extends TestCase
         gc_collect_cycles();
         unlink($path);
         $this->assertTrue($category->fresh()->allows_multiple_products);
+    }
+
+    private function validations(string $path, int $sheet = 1): array
+    {
+        $zip = new ZipArchive;
+        $zip->open($path);
+        $document = new DOMDocument;
+        $this->assertTrue($document->loadXML($zip->getFromName("xl/worksheets/sheet{$sheet}.xml"), LIBXML_NONET));
+        $zip->close();
+        $xpath = new DOMXPath($document);
+        $xpath->registerNamespace('s', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
+        $result = [];
+        foreach ($xpath->query('//s:dataValidation') as $node) {
+            $range = $node->getAttribute('sqref');
+            $this->assertArrayNotHasKey($range, $result);
+            $result[$range] = [
+                'type' => $node->getAttribute('type'),
+                'strict' => in_array($node->getAttribute('showErrorMessage'), ['1', 'true'], true),
+                'formula' => $xpath->evaluate('string(s:formula1)', $node),
+            ];
+        }
+
+        return $result;
+    }
+
+    private function catalogColumn(array $rows, string $title): array
+    {
+        $column = array_search($title, $rows[0], true);
+        $this->assertNotFalse($column, $title);
+
+        return array_values(array_map(fn (array $row) => $row[$column] ?? '', array_slice($rows, 1)));
+    }
+
+    private function dependentOptions(array $rows, string $title, string $name): array
+    {
+        $names = $this->catalogColumn($rows, $title.' / selección');
+        $references = $this->catalogColumn($rows, $title.' / referencia');
+        $index = array_search($name, $names, true);
+        $this->assertNotFalse($index, $name);
+        $this->assertSame(1, preg_match('/^\x27Listas\x27!\$([A-Z]+)\$(\d+):\$[A-Z]+\$(\d+)$/', $references[$index], $matches));
+        $column = 0;
+        foreach (str_split($matches[1]) as $letter) {
+            $column = $column * 26 + ord($letter) - 64;
+        }
+        $values = [];
+        for ($row = (int) $matches[2]; $row <= (int) $matches[3]; $row++) {
+            $value = $rows[$row - 1][$column - 1] ?? '';
+            if ($value !== '') {
+                $values[] = $value;
+            }
+        }
+
+        return $values;
+    }
+
+    public function test_templates_preload_real_catalogs_and_dependent_product_and_color_lists(): void
+    {
+        $category = Category::factory()->create(['name' => 'Categoría, "especial" '.str_repeat('á', 80)]);
+        $multiple = Category::factory()->create(['allows_multiple_products' => true]);
+        $product = Product::factory()->create(['name' => '=MODELO, "uno"', 'category_id' => $category->id]);
+        $other = Product::factory()->create(['category_id' => $multiple->id]);
+        ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo, especial']);
+        ProductVariant::create(['product_id' => $other->id, 'color' => 'Oculto']);
+        $factory = Factory::factory()->create(['name' => 'Fábrica, ejemplo']);
+        $vessel = Vessel::factory()->create();
+        $path = $this->download('msc.template');
+        $sheets = $this->workbook($path);
+        $this->assertCount(1, $sheets['Comercio Internacional']);
+        $this->assertCount(1, $sheets['Comercio Exterior']);
+        $lists = $sheets['Listas'];
+        $this->assertContains($category->name, $this->catalogColumn($lists, 'Categorías'));
+        $this->assertContains($product->name, $this->catalogColumn($lists, 'Productos'));
+        $this->assertContains($factory->name, $this->catalogColumn($lists, 'Fábricas'));
+        $this->assertContains($vessel->name, $this->catalogColumn($lists, 'Buques'));
+        $this->assertContains('REGISTRO', $this->catalogColumn($lists, 'Status del embarque'));
+        $this->assertNotContains('Borrador', $this->catalogColumn($lists, 'Status del embarque'));
+        $this->assertSame([$product->name], $this->dependentOptions($lists, 'Productos por categoría', $category->name));
+        $this->assertSame([$other->name], $this->dependentOptions($lists, 'Productos por categoría', $multiple->name));
+        $this->assertSame(['Rojo, especial'], $this->dependentOptions($lists, 'Colores por producto', $product->name));
+        $this->assertSame([], $this->dependentOptions($lists, 'Colores por producto', $other->name));
+        $rules = $this->validations($path, 2);
+        $this->assertTrue($rules['L2:L1048576']['strict']);
+        $this->assertTrue($rules['M2:M1048576']['strict']);
+        $this->assertStringContainsString('VLOOKUP($L2,INDIRECT(', $rules['M2:M1048576']['formula']);
+        $this->assertStringContainsString('VLOOKUP($M2,INDIRECT(', $rules['S2:S1048576']['formula']);
+        $this->assertFalse($rules['S2:S1048576']['strict']);
+        $this->assertSame('whole', $rules['K2:K1048576']['type']);
+        unlink($path);
+        foreach (['configuration.products' => ['C2:C1048576', 'Categorías', $category->name], 'configuration.categories' => ['B2:B1048576', 'Sí / No', 'Sí']] as $module => [$range, $column, $expected]) {
+            $path = $this->download($module.'.template');
+            $sheets = $this->workbook($path);
+            $this->assertContains($expected, $this->catalogColumn($sheets['Listas'], $column));
+            $rules = $this->validations($path);
+            $this->assertTrue($rules[$range]['strict']);
+            $this->assertStringStartsWith('INDIRECT(', $rules[$range]['formula']);
+            unlink($path);
+        }
+        foreach (['configuration.factories' => 'Fábricas existentes', 'configuration.vessels' => 'Buques existentes'] as $module => $label) {
+            $path = $this->download($module.'.template');
+            $sheets = $this->workbook($path);
+            $this->assertNotEmpty($this->catalogColumn($sheets['Listas'], $label));
+            $this->assertFalse($this->validations($path)['A2:A1048576']['strict']);
+            unlink($path);
+        }
+    }
+
+    public function test_import_rejects_unknown_or_mismatched_catalog_values_with_sheet_row_and_value(): void
+    {
+        $category = Category::factory()->create();
+        $other = Category::factory()->create();
+        $product = Product::factory()->create(['category_id' => $category->id]);
+        $factory = Factory::factory()->create();
+        $vessel = Vessel::factory()->create();
+        $base = [99, '2026-10-01', '2026-11-01', 'BL-VALID', '', $factory->name, $product->name, 1, '', 21, $vessel->name, '', '', $category->name];
+        foreach ([[5, 'Fábrica inexistente'], [10, 'Buque inexistente'], [13, $other->name], [12, 'STATUS INVÁLIDO']] as [$column, $invalid]) {
+            $bad = $base;
+            $bad[3] = 'BL-INVALID';
+            $bad[$column] = $invalid;
+            $path = $this->upload([[...array_values(MscFields::HEADERS), 'Categoría'], $base, $bad]);
+            try {
+                app(ImportMscShipments::class)->handle($path, foreignTrade: true);
+                $this->fail('Debe rechazar la referencia inválida.');
+            } catch (InvalidArgumentException $exception) {
+                $this->assertStringContainsString('Hoja', $exception->getMessage());
+                $this->assertStringContainsString('Fila 3', $exception->getMessage());
+                $this->assertStringContainsString($invalid, $exception->getMessage());
+            }
+            unset($exception);
+            gc_collect_cycles();
+            unlink($path);
+            $this->assertDatabaseCount('msc_shipments', 0);
+            $this->assertDatabaseCount('msc_shipment_products', 0);
+        }
+        $shipment = MscShipment::factory()->create(['category_id' => $category->id, 'product_id' => $product->id]);
+        $row = array_fill(0, count(MscReportFields::INTERNAL_HEADERS), '');
+        $row[7] = $shipment->bl_master;
+        $row[11] = $other->name;
+        $path = $this->upload([MscReportFields::INTERNAL_HEADERS, $row]);
+        try {
+            app(ImportMscShipments::class)->handle($path, foreignTrade: true);
+            $this->fail('Debe validar el producto existente al cambiar la categoría.');
+        } catch (InvalidArgumentException $exception) {
+            $this->assertStringContainsString('no pertenece', $exception->getMessage());
+            $this->assertStringContainsString($product->name, $exception->getMessage());
+        }
+        unset($exception);
+        gc_collect_cycles();
+        unlink($path);
+        $this->assertSame($category->id, $shipment->fresh()->category_id);
     }
 }

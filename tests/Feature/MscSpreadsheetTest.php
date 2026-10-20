@@ -44,6 +44,9 @@ class MscSpreadsheetTest extends TestCase
 
     private function row(string $blMaster = 'BL-NEW', string $model = 'Model One', string $blHouse = ''): array
     {
+        Factory::firstOrCreate(['name' => 'Factory One']);
+        Vessel::firstOrCreate(['name' => 'Agent 1']);
+
         return [999, '2026-10-01', '2026-11-01', $blMaster, $blHouse, 'Factory One', $model, 5, '', '21 days', 'Agent 1', ''];
     }
 
@@ -151,13 +154,14 @@ class MscSpreadsheetTest extends TestCase
         $matchedRow = $this->row('BL-MATCHED');
         $unknownRow = $this->row('BL-UNKNOWN');
         $unknownRow[5] = 'Factory Not Catalogued';
-        $rows = [$matchedRow, $unknownRow];
+        $rows = [$matchedRow];
         $upload = $this->upload($rows);
 
         app(ImportMscShipments::class)->handle($upload->getPathname());
 
         $this->assertSame($factory->id, MscShipment::where('bl_master', 'BL-MATCHED')->firstOrFail()->factory_id);
-        $this->assertNull(MscShipment::where('bl_master', 'BL-UNKNOWN')->firstOrFail()->factory_id);
+        Livewire::test(Import::class)->set('file', $this->upload([$unknownRow]))->call('import')->assertHasErrors('file')->assertSee('Factory Not Catalogued');
+        $this->assertFalse(MscShipment::where('bl_master', 'BL-UNKNOWN')->exists());
     }
 
     public function test_import_links_only_buques_found_in_the_catalog_and_supports_the_legacy_header(): void
@@ -168,11 +172,12 @@ class MscSpreadsheetTest extends TestCase
         $unknown = $this->row('BL-VESSEL-UNKNOWN');
         $unknown[10] = 'Buque sin catálogo';
 
-        $upload = $this->upload([$matched, $unknown]);
+        $upload = $this->upload([$matched]);
         app(ImportMscShipments::class)->handle($upload->getPathname());
 
         $this->assertSame($vessel->id, MscShipment::where('bl_master', 'BL-VESSEL-MATCHED')->firstOrFail()->vessel_id);
-        $this->assertNull(MscShipment::where('bl_master', 'BL-VESSEL-UNKNOWN')->firstOrFail()->vessel_id);
+        Livewire::test(Import::class)->set('file', $this->upload([$unknown]))->call('import')->assertHasErrors('file')->assertSee('Buque sin catálogo');
+        $this->assertFalse(MscShipment::where('bl_master', 'BL-VESSEL-UNKNOWN')->exists());
 
         $legacyHeaders = ['No.', 'ETD', 'ETA', 'Bill of Lading NO.', 'Destination', 'Shipping line', 'Factory', 'Model', 'Container Qty', 'Free time', 'Ship Agent', 'RELEASED'];
         $legacyRow = [1, '2026-10-01', '2026-11-01', 'BL-LEGACY-VESSEL', '', '', 'Factory One', 'Model One', 5, 21, 'Buque Aurora', ''];
@@ -235,6 +240,8 @@ class MscSpreadsheetTest extends TestCase
 
     public function test_original_workbook_layout_titles_notes_totals_and_extra_columns_are_supported(): void
     {
+        Factory::firstOrCreate(['name' => 'Factory One']);
+        Vessel::firstOrCreate(['name' => 'Agent']);
         $headers = ['No.', 'ETD', 'ETA', 'Bill of Lading NO.', 'Destination', 'Shipping line', 'Factory', 'Model', 'Container Qty', 'Free time', 'Ship Agent', 'RELEASED'];
         $rows = [
             ['Venezuela Shipment'], $headers,
@@ -288,7 +295,7 @@ class MscSpreadsheetTest extends TestCase
     {
         $response = $this->get(route('msc.template'))->assertOk()->assertDownload('plantilla-msc.xlsx');
         $sheets = $this->readWorkbook($response->baseResponse->getFile()->getPathname());
-        $this->assertSame(['Comercio Internacional', 'Comercio Exterior', 'Instrucciones'], array_keys($sheets));
+        $this->assertSame(['Comercio Internacional', 'Comercio Exterior', 'Instrucciones', 'Listas'], array_keys($sheets));
         $this->assertSame([array_values(MscFields::HEADERS)], $sheets['Comercio Internacional']);
         $this->assertSame([MscReportFields::INTERNAL_HEADERS], $sheets['Comercio Exterior']);
     }
@@ -310,7 +317,7 @@ class MscSpreadsheetTest extends TestCase
         Vessel::factory()->create(['name' => 'Buque Import']);
         $category = Category::factory()->create(['name' => 'Categoría Import']);
         $product = Product::firstOrFail();
-        $product->update(['units_per_container' => 24]);
+        $product->update(['units_per_container' => 24, 'category_id' => $category->id]);
         $variant = $product->variants()->create(['color' => 'rojo']);
 
         $internationalHeaders = array_values(MscFields::HEADERS);

@@ -12,6 +12,7 @@ use App\Models\MscShipment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
+use App\Models\Vessel;
 use App\Support\MscFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -613,6 +614,8 @@ class MscCategoryContextTest extends TestCase
 
     private function spreadsheet(string $bill, string $category): UploadedFile
     {
+        Factory::firstOrCreate(['name' => 'Factory']);
+        Vessel::firstOrCreate(['name' => 'Agent']);
         $path = tempnam(sys_get_temp_dir(), 'test-msc-category-');
         $writer = new Writer;
         $writer->openToFile($path);
@@ -627,8 +630,9 @@ class MscCategoryContextTest extends TestCase
 
     public function test_exterior_import_resolves_category_and_international_import_ignores_it(): void
     {
-        Product::factory()->create(['name' => 'Model One']);
+        $product = Product::factory()->create(['name' => 'Model One']);
         $category = Category::factory()->create(['name' => 'Parts']);
+        $product->update(['category_id' => $category->id]);
         Livewire::test(Import::class, ['foreignTrade' => true])->set('file', $this->spreadsheet('FOREIGN-BL', 'Parts'))
             ->call('import')->assertHasNoErrors()->assertRedirect(route('foreign-trade.msc.index'));
         $this->assertSame($category->id, MscShipment::where('bl_master', 'FOREIGN-BL')->firstOrFail()->category_id);
