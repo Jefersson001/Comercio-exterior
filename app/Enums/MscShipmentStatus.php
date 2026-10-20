@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum MscShipmentStatus: string
 {
+    case Draft = 'Borrador';
     case InBond = 'IN BOND';
     case Navegando = 'NAVEGANDO';
     case PorDespacho = 'POR DESPACHO';

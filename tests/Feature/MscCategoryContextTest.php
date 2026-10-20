@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Pages\Msc\Form;
 use App\Livewire\Pages\Msc\Import;
 use App\Livewire\Pages\Msc\Index;
+use App\Enums\MscBillOfLadingStatus;
 use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
@@ -44,6 +45,7 @@ class MscCategoryContextTest extends TestCase
             ->assertSee('role="tab"', false)
             ->assertSee('Fase 1')->assertSee('Fase 2')->assertSee('Fase 3')->assertSee('Fase 4')->assertSee('Notas')
             ->assertSee('data-foreign-trade-panel="phase-1"', false)
+            ->assertSeeInOrder(['N°EXP.', 'DUA/INTR', 'SEABRIDGE', 'SENCAMER', 'COMEX', 'Fecha Reconocimiento', 'Fecha Recepción', 'Categoría', 'Contenedor'])
             ->assertSee('Categoría exclusiva')->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
         $this->get(route('msc.edit', $shipment))->assertDontSee('data-foreign-trade-notebook', false);
         $this->assertDatabaseCount('msc_shipments', 1);
@@ -67,6 +69,85 @@ class MscCategoryContextTest extends TestCase
             ->assertDontSee('id="category_id"', false);
     }
 
+    public function test_foreign_trade_phase_one_saves_details_and_multiple_container_lines(): void
+    {
+        $category = Category::factory()->create();
+        $product = Product::factory()->create();
+        Livewire::test(Form::class, ['foreignTrade' => true])
+            ->set('etd', '2026-10-01')
+            ->set('eta', '2026-11-01')
+            ->set('bl_master', 'PHASE-ONE-BL')
+            ->set('product_id', $product->id)
+            ->set('container_qty', '2')
+            ->set('free_time', '21')
+            ->set('exp_number', 'EXP-2026-A1')
+            ->set('dua_intr', 'DUA/INT-82B')
+            ->set('seabridge', 'SEA-001')
+            ->set('sencamer', 'SEN-03C')
+            ->set('comex', 'COMEX-9')
+            ->set('recognition_date', '2026-10-18')
+            ->set('receipt_date', '2026-10-19')
+            ->set('category_id', $category->id)
+            ->call('addContainerLine')
+            ->set('containerLines.0.name', 'MSCU1234567')
+            ->call('addContainerLine')
+            ->set('containerLines.1.name', 'TGHU7654321')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertRedirect(route('foreign-trade.msc.index'));
+
+        $shipment = MscShipment::where('exp_number', 'EXP-2026-A1')->firstOrFail();
+        $this->assertSame('DUA/INT-82B', $shipment->dua_intr);
+        $this->assertSame('SEA-001', $shipment->seabridge);
+        $this->assertSame('SEN-03C', $shipment->sencamer);
+        $this->assertSame('COMEX-9', $shipment->comex);
+        $this->assertSame('2026-10-18', $shipment->recognition_date?->format('Y-m-d'));
+        $this->assertSame('2026-10-19', $shipment->receipt_date?->format('Y-m-d'));
+        $this->assertSame($category->id, $shipment->category_id);
+        $this->assertSame(['MSCU1234567', 'TGHU7654321'], $shipment->containers->pluck('name')->all());
+    }
+
+    public function test_foreign_trade_phase_one_can_edit_and_remove_container_lines(): void
+    {
+        $shipment = MscShipment::factory()->create();
+        $shipment->containers()->createMany([
+            ['name' => 'CONT-ONE'],
+            ['name' => 'CONT-TWO'],
+        ]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->assertSet('containerLines', [['name' => 'CONT-ONE'], ['name' => 'CONT-TWO']])
+            ->call('removeContainerLine', 0)
+            ->assertSet('containerLines', [['name' => 'CONT-TWO']])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(['CONT-TWO'], $shipment->fresh()->containers->pluck('name')->all());
+    }
+
+    public function test_international_form_does_not_expose_or_overwrite_foreign_trade_phase_one_data(): void
+    {
+        $shipment = MscShipment::factory()->create([
+            'exp_number' => 'FOREIGN-EXP',
+            'recognition_date' => '2026-10-18',
+        ]);
+        $shipment->containers()->create(['name' => 'FOREIGN-CONT']);
+
+        $this->get(route('msc.edit', $shipment))
+            ->assertDontSee('N°EXP.')
+            ->assertDontSee('CONTENEDOR')
+            ->assertDontSee('id="category_id"', false);
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->set('released', 'International update')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('FOREIGN-EXP', $shipment->fresh()->exp_number);
+        $this->assertSame('2026-10-18', $shipment->fresh()->recognition_date?->format('Y-m-d'));
+        $this->assertSame(['FOREIGN-CONT'], $shipment->fresh()->containers->pluck('name')->all());
+    }
+
     public function test_foreign_trade_can_assign_clear_and_validate_the_relation(): void
     {
         $category = Category::factory()->create();
@@ -79,6 +160,48 @@ class MscCategoryContextTest extends TestCase
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->set('category_id', null)->call('save')->assertHasNoErrors();
         $this->assertNull($shipment->fresh()->category_id);
+    }
+
+    public function test_status_bl_is_selectable_and_visible_only_in_foreign_trade(): void
+    {
+        $shipment = MscShipment::factory()->create();
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->assertSet('status_bl', '')
+            ->set('status_bl', MscBillOfLadingStatus::PendingRelease->value)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(MscBillOfLadingStatus::PendingRelease, $shipment->fresh()->status_bl);
+
+        $this->get(route('foreign-trade.msc.edit', $shipment))
+            ->assertSee('Status BL')
+            ->assertSee('BL LIBERADO OK')
+            ->assertSee('POR LIBERACION BL')
+            ->assertSee('POR LIBERACION BLSIN DOCUMENTO');
+        $this->get(route('msc.edit', $shipment))->assertDontSee('Status BL');
+
+        $this->get(route('foreign-trade.msc.index'))
+            ->assertSee('Status BL')
+            ->assertSee('POR LIBERACION BL');
+        $this->get(route('msc.index'))->assertDontSee('Status BL');
+    }
+
+    public function test_international_updates_preserve_status_bl_and_exterior_rejects_unknown_values(): void
+    {
+        $shipment = MscShipment::factory()->create(['status_bl' => MscBillOfLadingStatus::Released]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->assertSet('status_bl', '')
+            ->call('save')
+            ->assertHasNoErrors();
+        $this->assertSame(MscBillOfLadingStatus::Released, $shipment->fresh()->status_bl);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->set('status_bl', 'INVALID')
+            ->call('save')
+            ->assertHasErrors('status_bl');
+        $this->assertSame(MscBillOfLadingStatus::Released, $shipment->fresh()->status_bl);
     }
 
     public function test_international_updates_preserve_the_category_and_ignore_hidden_field_changes(): void

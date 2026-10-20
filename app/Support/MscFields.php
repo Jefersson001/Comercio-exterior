@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\MscShipmentStatus;
+use App\Enums\MscBillOfLadingStatus;
 use App\Models\MscShipment;
 use Illuminate\Validation\Rule;
 
@@ -31,6 +32,16 @@ class MscFields
             'vessel_id' => ['nullable', 'integer', 'exists:vessels,id'],
             'released' => ['nullable', 'string', 'max:255'],
             'status' => ['nullable', Rule::enum(MscShipmentStatus::class)],
+            ...($foreignTrade ? ['status_bl' => ['nullable', Rule::enum(MscBillOfLadingStatus::class)]] : []),
+            ...($foreignTrade ? [
+                'exp_number' => ['nullable', 'string', 'max:255'],
+                'dua_intr' => ['nullable', 'string', 'max:255'],
+                'seabridge' => ['nullable', 'string', 'max:255'],
+                'sencamer' => ['nullable', 'string', 'max:255'],
+                'comex' => ['nullable', 'string', 'max:255'],
+                'recognition_date' => ['nullable', 'date_format:Y-m-d'],
+                'receipt_date' => ['nullable', 'date_format:Y-m-d'],
+            ] : []),
             ...($foreignTrade ? ['category_id' => ['nullable', 'integer', 'exists:categories,id']] : []),
         ];
     }
@@ -38,7 +49,24 @@ class MscFields
     /** @return array<string, string> */
     public static function labels(): array
     {
-        return ['product_id' => 'Model', 'factory_id' => 'Fábrica', 'vessel_id' => 'Buque', 'category_id' => 'Categoría', 'bl_master' => 'BL Master', 'bl_house' => 'BL House', ...self::HEADERS];
+        return [
+            'product_id' => 'Model',
+            'factory_id' => 'Fábrica',
+            'vessel_id' => 'Buque',
+            'category_id' => 'Categoría',
+            'status_bl' => 'Status BL',
+            'bl_master' => 'BL Master',
+            'bl_house' => 'BL House',
+            'exp_number' => 'N°EXP.',
+            'dua_intr' => 'DUA/INTR',
+            'seabridge' => 'SEABRIDGE',
+            'sencamer' => 'SENCAMER',
+            'comex' => 'COMEX',
+            'recognition_date' => 'Fecha Reconocimiento',
+            'receipt_date' => 'Fecha Recepción',
+            'containerLines.*.name' => 'Contenedor',
+            ...self::HEADERS,
+        ];
     }
 
     /** @return array<string, string> */

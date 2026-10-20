@@ -18,6 +18,7 @@
             <table class="w-full min-w-[105rem] text-left text-sm">
                 <thead class="bg-slate-50 text-xs tracking-wider text-slate-500 uppercase dark:bg-slate-950/40 dark:text-slate-400"><tr>
                     @foreach(\App\Support\MscFields::headers($foreignTrade) as $label)<th scope="col" class="px-5 py-4 font-semibold">{{ $label === 'Factory' ? 'Fábrica' : $label }}</th>@endforeach
+                    @if($foreignTrade)<th scope="col" class="px-5 py-4 font-semibold">Status BL</th>@endif
                     <th scope="col" class="px-5 py-4 font-semibold">Acciones</th>
                 </tr></thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-white/5">
@@ -29,11 +30,14 @@
                             <td class="px-5 py-4">{{ $shipment->product->name }}</td><td class="px-5 py-4">{{ $shipment->container_qty }}</td><td class="px-5 py-4">{{ $shipment->totalUnits() ?? '—' }}</td><td class="whitespace-nowrap px-5 py-4">{{ $shipment->free_time }} días</td>
                             <td class="px-5 py-4">{{ $shipment->vessel?->name ?? '—' }}</td><td class="px-5 py-4">{{ $shipment->released ?: '—' }}</td>
                             <td class="min-w-80 px-5 py-4"><x-msc.status-bar :status="$shipment->status" /></td>
-                            @if($foreignTrade)<td class="px-5 py-4">{{ $shipment->category?->name ?? 'Sin categoría' }}</td>@endif
+                            @if($foreignTrade)
+                                <td class="min-w-96 px-5 py-4"><x-msc.status-bl-bar :status="$shipment->status_bl" /></td>
+                                <td class="px-5 py-4">{{ $shipment->category?->name ?? 'Sin categoría' }}</td>
+                            @endif
                             <td class="px-5 py-4"><a href="{{ $this->mscRoute('edit', ['shipment' => $shipment]) }}" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">Editar</a></td>
                         </tr>
                     @empty
-                        <tr><td colspan="{{ $foreignTrade ? 15 : 14 }}" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron registros MSC</p><p class="mt-2 text-slate-500 dark:text-slate-400">Crea un registro o importa tu archivo de Excel.</p></td></tr>
+                        <tr><td colspan="{{ $foreignTrade ? 16 : 14 }}" class="px-6 py-14 text-center"><p class="font-semibold">No se encontraron registros MSC</p><p class="mt-2 text-slate-500 dark:text-slate-400">Crea un registro o importa tu archivo de Excel.</p></td></tr>
                     @endforelse
                 </tbody>
             </table>

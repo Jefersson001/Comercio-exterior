@@ -187,7 +187,7 @@ class MscManagementTest extends TestCase
 
         $this->get(route('msc.index'))->assertOk()->assertSee('NAVEGANDO')->assertSee('RECONOCIMIENTO');
         $this->get(route('msc.edit', $shipment))->assertOk()
-            ->assertSeeInOrder(['Status del embarque', 'IN BOND', 'NAVEGANDO', 'RECONOCIMIENTO', 'No.'])
+            ->assertSeeInOrder(['Status del embarque', 'Borrador', 'IN BOND', 'NAVEGANDO', 'RECONOCIMIENTO', 'No.'])
             ->assertSee('NAVEGANDO');
     }
 

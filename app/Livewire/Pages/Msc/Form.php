@@ -6,10 +6,12 @@ use App\Concerns\InteractsWithMscContext;
 use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
+use App\Models\MscShipmentContainer;
 use App\Models\Product;
 use App\Models\Vessel;
 use App\Support\MscFields;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
@@ -50,7 +52,26 @@ class Form extends Component
 
     public string $status = '';
 
+    public string $status_bl = '';
+
     public string $activeForeignTradeTab = 'phase-1';
+
+    public string $exp_number = '';
+
+    public string $dua_intr = '';
+
+    public string $seabridge = '';
+
+    public string $sencamer = '';
+
+    public string $comex = '';
+
+    public string $recognition_date = '';
+
+    public string $receipt_date = '';
+
+    /** @var array<int, array{name: string}> */
+    public array $containerLines = [];
 
     public function boot(): void
     {
@@ -70,6 +91,18 @@ class Form extends Component
             $this->product_id = $shipment->product_id;
             if ($this->foreignTrade) {
                 $this->category_id = $shipment->category_id;
+                $this->status_bl = $shipment->status_bl?->value ?? '';
+                $this->exp_number = $shipment->exp_number ?? '';
+                $this->dua_intr = $shipment->dua_intr ?? '';
+                $this->seabridge = $shipment->seabridge ?? '';
+                $this->sencamer = $shipment->sencamer ?? '';
+                $this->comex = $shipment->comex ?? '';
+                $this->recognition_date = $shipment->recognition_date?->format('Y-m-d') ?? '';
+                $this->receipt_date = $shipment->receipt_date?->format('Y-m-d') ?? '';
+                $this->containerLines = $shipment->containers
+                    ->map(fn (MscShipmentContainer $container): array => ['name' => $container->name])
+                    ->values()
+                    ->all();
             }
             $this->container_qty = (string) $shipment->container_qty;
             $this->unitsQtyOverridden = $shipment->units_qty !== null;
@@ -110,14 +143,54 @@ class Form extends Component
         $this->activeForeignTradeTab = $tab;
     }
 
+    public function addContainerLine(): void
+    {
+        abort_unless($this->foreignTrade, 404);
+
+        $this->containerLines[] = ['name' => ''];
+    }
+
+    public function removeContainerLine(int $index): void
+    {
+        abort_unless($this->foreignTrade, 404);
+
+        unset($this->containerLines[$index]);
+        $this->containerLines = array_values($this->containerLines);
+    }
+
     public function save(): void
     {
         Gate::authorize('manage-msc');
         foreach (['bl_master', 'bl_house', 'released', 'units_qty', 'status'] as $field) {
             $this->{$field} = trim($this->{$field});
         }
-        $data = $this->validate(MscFields::rules($this->shipmentId, $this->foreignTrade, $this->bl_house), attributes: MscFields::labels());
+        if ($this->foreignTrade) {
+            $this->status_bl = trim($this->status_bl);
+            foreach (['exp_number', 'dua_intr', 'seabridge', 'sencamer', 'comex'] as $field) {
+                $this->{$field} = trim($this->{$field});
+            }
+            foreach (['recognition_date', 'receipt_date'] as $field) {
+                $this->{$field} = trim($this->{$field});
+            }
+            foreach ($this->containerLines as $index => $line) {
+                if (isset($line['name']) && is_string($line['name'])) {
+                    $this->containerLines[$index]['name'] = trim($line['name']);
+                }
+            }
+        }
+        $rules = MscFields::rules($this->shipmentId, $this->foreignTrade, $this->bl_house);
+        if ($this->foreignTrade) {
+            $rules += [
+                'containerLines' => ['array'],
+                'containerLines.*' => ['array:name'],
+                'containerLines.*.name' => ['nullable', 'string', 'max:255'],
+            ];
+        }
+        $data = $this->validate($rules, attributes: MscFields::labels());
         $data['status'] = $this->status === '' ? null : $this->status;
+        if ($this->foreignTrade) {
+            $data['status_bl'] = $this->status_bl === '' ? null : $this->status_bl;
+        }
         $data['units_qty'] = $this->unitsQtyOverridden ? (int) $this->units_qty : null;
         $unitsPerContainer = Product::query()->whereKey($data['product_id'])->value('units_per_container');
         $capacity = $unitsPerContainer === null ? null : (int) $unitsPerContainer * (int) $data['container_qty'];
@@ -132,9 +205,28 @@ class Form extends Component
             return;
         }
         $data['bl_house'] = $this->bl_house;
-        $shipment = $this->shipmentId ? MscShipment::findOrFail($this->shipmentId) : new MscShipment;
-        $shipment->fill($data);
-        $shipment->save();
+        $containerLines = [];
+        if ($this->foreignTrade) {
+            $containerLines = collect($data['containerLines'] ?? [])
+                ->map(fn (array $line): array => ['name' => trim((string) ($line['name'] ?? ''))])
+                ->filter(fn (array $line): bool => $line['name'] !== '')
+                ->values()
+                ->all();
+            unset($data['containerLines']);
+        }
+        $shipment = DB::transaction(function () use ($data, $containerLines): MscShipment {
+            $shipment = $this->shipmentId ? MscShipment::findOrFail($this->shipmentId) : new MscShipment;
+            $shipment->fill($data);
+            $shipment->save();
+            if ($this->foreignTrade) {
+                $shipment->containers()->delete();
+                if ($containerLines !== []) {
+                    $shipment->containers()->createMany($containerLines);
+                }
+            }
+
+            return $shipment;
+        });
         session()->flash('status', 'Registro MSC No. '.$shipment->id.' guardado correctamente.');
         $this->redirect($this->mscRoute('index'));
     }

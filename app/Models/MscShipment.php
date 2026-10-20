@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Enums\MscShipmentStatus;
+use App\Enums\MscBillOfLadingStatus;
 use Database\Factories\MscShipmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
@@ -24,8 +26,11 @@ use Illuminate\Support\Carbon;
  * @property-read Vessel|null $vessel
  * @property int|null $units_qty
  * @property MscShipmentStatus|null $status
+ * @property MscBillOfLadingStatus|null $status_bl
+ * @property Carbon|null $recognition_date
+ * @property Carbon|null $receipt_date
  */
-#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status'])]
+#[Fillable(['etd', 'eta', 'bl_master', 'bl_house', 'factory_id', 'vessel_id', 'product_id', 'category_id', 'container_qty', 'units_qty', 'free_time', 'released', 'status', 'status_bl', 'exp_number', 'dua_intr', 'seabridge', 'sencamer', 'comex', 'recognition_date', 'receipt_date'])]
 class MscShipment extends Model
 {
     /** @use HasFactory<MscShipmentFactory> */
@@ -37,7 +42,7 @@ class MscShipment extends Model
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['etd' => 'date', 'eta' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'status' => MscShipmentStatus::class];
+        return ['etd' => 'date', 'eta' => 'date', 'recognition_date' => 'date', 'receipt_date' => 'date', 'container_qty' => 'integer', 'units_qty' => 'integer', 'free_time' => 'integer', 'status' => MscShipmentStatus::class, 'status_bl' => MscBillOfLadingStatus::class];
     }
 
     /** @return BelongsTo<Product, $this> */
@@ -62,6 +67,12 @@ class MscShipment extends Model
     public function vessel(): BelongsTo
     {
         return $this->belongsTo(Vessel::class);
+    }
+
+    /** @return HasMany<MscShipmentContainer, $this> */
+    public function containers(): HasMany
+    {
+        return $this->hasMany(MscShipmentContainer::class)->orderBy('id');
     }
 
     public function totalUnits(): ?int

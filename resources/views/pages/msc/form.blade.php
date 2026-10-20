@@ -8,6 +8,12 @@
             <p class="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Status del embarque</p>
             <x-msc.status-bar :status="$status" interactive />
         </div>
+        @if($foreignTrade)
+            <div class="mb-6 border-b border-slate-200 bg-slate-50/70 pb-6 dark:border-white/10 dark:bg-slate-950/30">
+                <p class="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Status BL</p>
+                <x-msc.status-bl-bar :status="$status_bl" interactive />
+            </div>
+        @endif
         <fieldset wire:loading.attr="disabled" class="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <legend class="sr-only">Información MSC</legend>
             <x-forms.input name="no" label="No." :value="$shipmentId ?? 'Se asignará al guardar'" readonly hint="Numeración automática del sistema." />
@@ -70,26 +76,67 @@
                             ])
                         >
                             {{ $label }}
-                        </button>
+                    </button>
                     @endforeach
-                </div>
-                <div
-                    id="foreign-trade-panel-{{ $activeForeignTradeTab }}"
-                    role="tabpanel"
-                    aria-labelledby="foreign-trade-tab-{{ $activeForeignTradeTab }}"
-                    data-foreign-trade-panel="{{ $activeForeignTradeTab }}"
-                    class="min-h-40 min-w-0 p-5 sm:p-6"
-                >
-                    @if($activeForeignTradeTab === 'phase-1')
-                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>
-                        <select id="category_id" wire:model="category_id" class="w-full max-w-xl rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
-                            <option value="">Sin categoría</option>
-                            @foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach
-                        </select>
-                        @error('category_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
-                        @if($categories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Crea las categorías en Configuración → Categorías.</p>@endif
-                    @endif
-                </div>
+                    </div>
+                    <div
+                            id="foreign-trade-panel-{{ $activeForeignTradeTab }}"
+                            role="tabpanel"
+                            aria-labelledby="foreign-trade-tab-{{ $activeForeignTradeTab }}"
+                            data-foreign-trade-panel="{{ $activeForeignTradeTab }}"
+                            class="min-h-40 min-w-0 p-5 sm:p-6"
+                    >
+                            @if($activeForeignTradeTab === 'phase-1')
+                                <div class="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                    <x-forms.input name="exp_number" label="N°EXP." wire:model="exp_number" maxlength="255" />
+                                    <x-forms.input name="dua_intr" label="DUA/INTR" wire:model="dua_intr" maxlength="255" />
+                                    <x-forms.input name="seabridge" label="SEABRIDGE" wire:model="seabridge" maxlength="255" />
+                                    <x-forms.input name="sencamer" label="SENCAMER" wire:model="sencamer" maxlength="255" />
+                                    <x-forms.input name="comex" label="COMEX" wire:model="comex" maxlength="255" />
+                                    <x-forms.input name="recognition_date" label="Fecha Reconocimiento" type="date" wire:model="recognition_date" />
+                                    <x-forms.input name="receipt_date" label="Fecha Recepción" type="date" wire:model="receipt_date" />
+
+                                    <div>
+                                        <label for="category_id" class="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">Categoría</label>
+                                        <select id="category_id" wire:model="category_id" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-950 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-500/10 dark:border-white/10 dark:bg-slate-900 dark:text-white">
+                                            <option value="">Sin categoría</option>
+                                            @foreach($categories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach
+                                        </select>
+                                        @error('category_id')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                                        @if($categories->isEmpty())<p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Crea las categorías en Configuración → Categorías.</p>@endif
+                                    </div>
+
+                                    <section class="sm:col-span-2 lg:col-span-3">
+                                        <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
+                                            <div class="grid grid-cols-[minmax(0,1fr)_3rem] border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                                                <span>Contenedor</span>
+                                                <span class="sr-only">Acciones</span>
+                                            </div>
+                                            @forelse($containerLines as $index => $line)
+                                                <div wire:key="msc-container-line-{{ $index }}" class="grid grid-cols-[minmax(0,1fr)_3rem] items-center border-b border-slate-200 px-4 py-1 last:border-b-0 dark:border-white/10">
+                                                    <div class="min-w-0">
+                                                        <label for="container-line-{{ $index }}" class="sr-only">Contenedor {{ $index + 1 }}</label>
+                                                        <input id="container-line-{{ $index }}" type="text" wire:model="containerLines.{{ $index }}.name" maxlength="255" placeholder="Escribe el número de contenedor..." class="w-full border-0 bg-transparent px-0 py-2.5 text-sm text-slate-950 outline-none placeholder:text-slate-400 focus:ring-0 dark:text-white dark:placeholder:text-slate-500">
+                                                        @error("containerLines.$index.name")<p role="alert" class="pb-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                                                    </div>
+                                                    <button type="button" wire:click="removeContainerLine({{ $index }})" wire:loading.attr="disabled" aria-label="Eliminar contenedor {{ $index + 1 }}" title="Eliminar línea" class="inline-flex size-8 items-center justify-center rounded text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-300">
+                                                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16m-10 4v6m4-6v6M5.5 7l1 13h11l1-13M9 7V4h6v3"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            @empty
+                                                <p class="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No hay contenedores.</p>
+                                            @endforelse
+                                            <div class="border-t border-slate-200 px-4 py-3 dark:border-white/10">
+                                                <button type="button" wire:click="addContainerLine" wire:loading.attr="disabled" class="text-sm font-medium text-indigo-600 transition hover:text-indigo-800 disabled:opacity-50 dark:text-indigo-300 dark:hover:text-indigo-200">Agregar una línea</button>
+                                            </div>
+                                        </div>
+                                        @error('containerLines')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                                    </section>
+                                </div>
+                            @endif
+                    </div>
             </div>
         @endif
         <div class="mt-8 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">
