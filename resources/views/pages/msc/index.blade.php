@@ -65,9 +65,9 @@
                             <td class="whitespace-pre-line px-5 py-4 font-medium">{{ $shipment->bl_master }}</td><td class="whitespace-pre-line px-5 py-4">{{ $shipment->bl_house ?: '—' }}</td><td class="whitespace-pre-line px-5 py-4">{{ $shipment->factoryRecord?->name ?? '—' }}</td>
                             <td class="px-5 py-4">{{ $shipment->product->name }}</td><td class="px-5 py-4">{{ $shipment->container_qty }}</td><td class="px-5 py-4">{{ $shipment->totalUnits() ?? '—' }}</td><td class="whitespace-nowrap px-5 py-4">{{ $shipment->free_time }} días</td>
                             <td class="px-5 py-4">{{ $shipment->vessel?->name ?? '—' }}</td><td class="px-5 py-4">{{ $shipment->released ?: '—' }}</td>
-                            <td class="min-w-80 px-5 py-4"><x-msc.status-bar :status="$shipment->status" /></td>
+                            <td class="whitespace-nowrap px-5 py-4"><span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">{{ $shipment->status?->value ?? 'Sin estado' }}</span></td>
                             @if($foreignTrade)
-                                <td class="min-w-96 px-5 py-4"><x-msc.status-bl-bar :status="$shipment->status_bl" /></td>
+                                <td class="whitespace-nowrap px-5 py-4"><span class="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">{{ $shipment->status_bl?->value ?? 'Sin status BL' }}</span></td>
                                 <td class="px-5 py-4">{{ $shipment->category?->name ?? 'Sin categoría' }}</td>
                             @endif
                             <td class="px-5 py-4"><a href="{{ $this->mscRoute('edit', ['shipment' => $shipment]) }}" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-300">Editar</a></td>
