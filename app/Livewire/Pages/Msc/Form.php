@@ -7,12 +7,15 @@ use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
 use App\Models\MscShipmentContainer;
+use App\Models\MscShipmentProductVariant;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Vessel;
 use App\Support\MscFields;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -121,6 +124,9 @@ class Form extends Component
     /** @var array<int, array{name: string}> */
     public array $containerLines = [];
 
+    /** @var array<int, array{product_variant_id: int|string|null, quantity: int|string|null}> */
+    public array $productVariantLines = [];
+
     public function boot(): void
     {
         Gate::authorize('manage-msc');
@@ -175,6 +181,13 @@ class Form extends Component
                     ->map(fn (MscShipmentContainer $container): array => ['name' => $container->name])
                     ->values()
                     ->all();
+                $this->productVariantLines = $shipment->productVariantLines
+                    ->map(fn (MscShipmentProductVariant $line): array => [
+                        'product_variant_id' => $line->product_variant_id,
+                        'quantity' => (string) $line->quantity,
+                    ])
+                    ->values()
+                    ->all();
             }
             $this->container_qty = (string) $shipment->container_qty;
             $this->unitsQtyOverridden = $shipment->units_qty !== null;
@@ -192,6 +205,10 @@ class Form extends Component
     public function updated(string $property, mixed $value = null): void
     {
         if (in_array($property, ['product_id', 'container_qty'], true)) {
+            if ($property === 'product_id' && $this->foreignTrade) {
+                $this->productVariantLines = [];
+            }
+
             $this->unitsQtyOverridden = false;
             $this->recalculateUnitsQty();
 
@@ -230,6 +247,21 @@ class Form extends Component
         $this->containerLines = array_values($this->containerLines);
     }
 
+    public function addProductVariantLine(): void
+    {
+        abort_unless($this->foreignTrade, 404);
+
+        $this->productVariantLines[] = ['product_variant_id' => null, 'quantity' => '0'];
+    }
+
+    public function removeProductVariantLine(int $index): void
+    {
+        abort_unless($this->foreignTrade, 404);
+
+        unset($this->productVariantLines[$index]);
+        $this->productVariantLines = array_values($this->productVariantLines);
+    }
+
     public function save(): void
     {
         Gate::authorize('manage-msc');
@@ -252,6 +284,23 @@ class Form extends Component
                     $this->containerLines[$index]['name'] = trim($line['name']);
                 }
             }
+            foreach ($this->productVariantLines as $index => $line) {
+                if (! is_array($line)) {
+                    continue;
+                }
+                if (isset($line['product_variant_id']) && is_string($line['product_variant_id'])) {
+                    $this->productVariantLines[$index]['product_variant_id'] = trim($line['product_variant_id']);
+                }
+                if (isset($line['quantity']) && is_string($line['quantity'])) {
+                    $this->productVariantLines[$index]['quantity'] = trim($line['quantity']);
+                }
+            }
+            $this->productVariantLines = array_values(array_filter(
+                $this->productVariantLines,
+                fn (mixed $line): bool => ! is_array($line)
+                    || ($line['product_variant_id'] ?? '') !== ''
+                    || ! in_array($line['quantity'] ?? '', ['', '0', 0, null], true),
+            ));
         }
         $rules = MscFields::rules($this->shipmentId, $this->foreignTrade, $this->bl_house);
         if ($this->foreignTrade) {
@@ -259,6 +308,15 @@ class Form extends Component
                 'containerLines' => ['array'],
                 'containerLines.*' => ['array:name'],
                 'containerLines.*.name' => ['nullable', 'string', 'max:255'],
+                'productVariantLines' => ['array'],
+                'productVariantLines.*' => ['array:product_variant_id,quantity'],
+                'productVariantLines.*.product_variant_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists(ProductVariant::class, 'id')->where('product_id', $this->product_id),
+                    'distinct',
+                ],
+                'productVariantLines.*.quantity' => ['nullable', 'integer', 'min:0', 'max:2147483647'],
             ];
         }
         $data = $this->validate($rules, attributes: MscFields::labels());
@@ -281,6 +339,7 @@ class Form extends Component
         }
         $data['bl_house'] = $this->bl_house;
         $containerLines = [];
+        $productVariantLines = [];
         if ($this->foreignTrade) {
             $containerLines = collect($data['containerLines'] ?? [])
                 ->map(fn (array $line): array => ['name' => trim((string) ($line['name'] ?? ''))])
@@ -288,8 +347,16 @@ class Form extends Component
                 ->values()
                 ->all();
             unset($data['containerLines']);
+            $productVariantLines = collect($data['productVariantLines'] ?? [])
+                ->map(fn (array $line): array => [
+                    'product_variant_id' => (int) $line['product_variant_id'],
+                    'quantity' => ($line['quantity'] ?? '') === '' ? 0 : (int) $line['quantity'],
+                ])
+                ->values()
+                ->all();
+            unset($data['productVariantLines']);
         }
-        $shipment = DB::transaction(function () use ($data, $containerLines): MscShipment {
+        $shipment = DB::transaction(function () use ($data, $containerLines, $productVariantLines): MscShipment {
             $shipment = $this->shipmentId ? MscShipment::findOrFail($this->shipmentId) : new MscShipment;
             $shipment->fill($data);
             $shipment->save();
@@ -297,6 +364,10 @@ class Form extends Component
                 $shipment->containers()->delete();
                 if ($containerLines !== []) {
                     $shipment->containers()->createMany($containerLines);
+                }
+                $shipment->productVariantLines()->delete();
+                if ($productVariantLines !== []) {
+                    $shipment->productVariantLines()->createMany($productVariantLines);
                 }
             }
 
@@ -325,9 +396,11 @@ class Form extends Component
         return view('pages.msc.form', [
             'factories' => Factory::orderBy('name')->get(),
             'products' => $products,
+            'selectedProduct' => $selectedProduct,
             'unitsPerContainer' => $selectedProduct?->units_per_container,
             'vessels' => Vessel::orderBy('name')->get(),
             'categories' => $this->foreignTrade ? Category::orderBy('name')->get() : collect(),
+            'productVariants' => $this->foreignTrade ? $selectedProduct?->variants ?? collect() : collect(),
         ])
             ->layout('layouts.dashboard', ['title' => $title, 'heading' => $title]);
     }

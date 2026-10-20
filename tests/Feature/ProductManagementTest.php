@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Pages\Configuration\Products\Form;
 use App\Livewire\Pages\Configuration\Products\Index;
+use App\Models\MscShipment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\User;
@@ -128,6 +129,27 @@ class ProductManagementTest extends TestCase
             'color' => $variant->color,
         ])->all());
         $this->assertModelMissing($blue);
+    }
+
+    public function test_product_form_prevents_removing_variant_used_by_msc(): void
+    {
+        $this->actingAs($this->administrator());
+        $product = Product::factory()->create();
+        $variant = $product->variants()->create(['color' => 'Rojo']);
+        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment->productVariantLines()->create(['product_variant_id' => $variant->id, 'quantity' => 3]);
+
+        Livewire::test(Form::class, ['product' => $product])
+            ->set('variants', [])
+            ->call('save')
+            ->assertHasErrors(['variants' => 'No se puede eliminar un color asociado a un embarque MSC. Retira primero la variante del embarque.']);
+
+        $this->assertModelExists($variant);
+        $this->assertDatabaseHas('msc_shipment_product_variants', [
+            'msc_shipment_id' => $shipment->id,
+            'product_variant_id' => $variant->id,
+            'quantity' => 3,
+        ]);
     }
 
     public function test_variant_colors_are_required_and_unique_per_product(): void

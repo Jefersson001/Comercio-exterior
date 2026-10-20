@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Pages\Configuration\Products;
 
+use App\Models\MscShipmentProductVariant;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Contracts\View\View;
@@ -93,6 +94,17 @@ class Form extends Component
             'variants.*.color.required' => 'Ingresa el color de la variante.',
             'variants.*.color.distinct' => 'No repitas el color en este producto.',
         ]);
+
+        if ($this->productId !== null) {
+            $submittedVariantIds = collect($data['variants'])->pluck('id')->filter()->map(fn ($id): int => (int) $id);
+            $removedVariantIds = Product::findOrFail($this->productId)->variants()->pluck('id')->diff($submittedVariantIds);
+
+            if ($removedVariantIds->isNotEmpty() && MscShipmentProductVariant::query()->whereIn('product_variant_id', $removedVariantIds)->exists()) {
+                $this->addError('variants', 'No se puede eliminar un color asociado a un embarque MSC. Retira primero la variante del embarque.');
+
+                return;
+            }
+        }
 
         $product = DB::transaction(function () use ($data): Product {
             $product = $this->productId ? Product::findOrFail($this->productId) : new Product;

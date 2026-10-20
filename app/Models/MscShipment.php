@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\MscShipmentStatus;
 use App\Enums\MscBillOfLadingStatus;
+use App\Enums\MscShipmentStatus;
 use Database\Factories\MscShipmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -90,6 +90,12 @@ class MscShipment extends Model
     public function containers(): HasMany
     {
         return $this->hasMany(MscShipmentContainer::class)->orderBy('id');
+    }
+
+    /** @return HasMany<MscShipmentProductVariant, $this> */
+    public function productVariantLines(): HasMany
+    {
+        return $this->hasMany(MscShipmentProductVariant::class)->orderBy('id');
     }
 
     public function totalUnits(): ?int

@@ -135,6 +135,46 @@
                                         @error('containerLines')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
                                     </section>
 
+                                    <section class="sm:col-span-2 lg:col-span-3">
+                                        <div class="overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
+                                            <div class="flex items-center gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                                                <span class="min-w-0 flex-1">Variante del producto</span>
+                                                <span class="w-20 shrink-0 text-left">Cant</span>
+                                                <span class="w-8 shrink-0" aria-hidden="true"></span>
+                                            </div>
+                                            @forelse($productVariantLines as $index => $line)
+                                                <div wire:key="msc-product-variant-line-{{ $index }}" class="flex items-center gap-3 border-b border-slate-200 px-4 py-1 last:border-b-0 dark:border-white/10">
+                                                    <div class="min-w-0 flex-1">
+                                                        <label for="product-variant-line-{{ $index }}" class="sr-only">Variante {{ $index + 1 }}</label>
+                                                        <select id="product-variant-line-{{ $index }}" wire:model="productVariantLines.{{ $index }}.product_variant_id" class="w-full border-0 bg-transparent px-0 py-2.5 text-sm text-slate-950 outline-none focus:ring-0 dark:text-white">
+                                                            <option value="">Selecciona color...</option>
+                                                            @foreach($productVariants as $variant)
+                                                                <option value="{{ $variant->id }}">{{ $selectedProduct?->name }} ({{ $variant->color }})</option>
+                                                            @endforeach
+                                                        </select>
+                                                        @error("productVariantLines.$index.product_variant_id")<p role="alert" class="pb-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                                                    </div>
+                                                    <div class="w-20 shrink-0">
+                                                        <label for="product-variant-quantity-{{ $index }}" class="sr-only">Cantidad de variante {{ $index + 1 }}</label>
+                                                        <input id="product-variant-quantity-{{ $index }}" type="number" wire:model="productVariantLines.{{ $index }}.quantity" min="0" max="2147483647" step="1" class="w-full border-0 bg-transparent px-1 py-2.5 text-sm text-slate-950 outline-none focus:ring-0 dark:text-white">
+                                                        @error("productVariantLines.$index.quantity")<p role="alert" class="pb-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                                                    </div>
+                                                    <button type="button" wire:click="removeProductVariantLine({{ $index }})" wire:loading.attr="disabled" aria-label="Eliminar variante {{ $index + 1 }}" title="Eliminar línea" class="inline-flex size-8 shrink-0 items-center justify-center rounded text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-300">
+                                                        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16m-10 4v6m4-6v6M5.5 7l1 13h11l1-13M9 7V4h6v3"/>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            @empty
+                                                <p class="px-4 py-3 text-sm text-slate-500 dark:text-slate-400">No hay variantes agregadas.</p>
+                                            @endforelse
+                                            <div class="border-t border-slate-200 px-4 py-3 dark:border-white/10">
+                                                <button type="button" wire:click="addProductVariantLine" wire:loading.attr="disabled" class="text-sm font-medium text-indigo-600 transition hover:text-indigo-800 disabled:opacity-50 dark:text-indigo-300 dark:hover:text-indigo-200">Agregar una línea</button>
+                                            </div>
+                                        </div>
+                                        @error('productVariantLines')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
+                                    </section>
+
                                     <x-forms.input name="shipment_year" label="Año" type="number" wire:model="shipment_year" min="1000" max="9999" step="1" />
                                     <x-forms.input name="etd_vnzl" label="ETD" type="date" wire:model="etd_vnzl" />
                                     <x-forms.input name="eta_vnzl" label="ETA VNZL" type="date" wire:model="eta_vnzl" />

@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\User;
 use App\Support\MscFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -250,6 +251,94 @@ class MscCategoryContextTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(['CONT-TWO'], $shipment->fresh()->containers->pluck('name')->all());
+    }
+
+    public function test_foreign_trade_phase_one_saves_and_reloads_product_variant_lines(): void
+    {
+        $product = Product::factory()->create(['name' => 'Camisa']);
+        $red = ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo']);
+        $blue = ProductVariant::create(['product_id' => $product->id, 'color' => 'Azul']);
+        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('addProductVariantLine')
+            ->assertSee('Camisa (Rojo)')
+            ->assertSee('Camisa (Azul)')
+            ->set('productVariantLines.0.product_variant_id', $red->id)
+            ->set('productVariantLines.0.quantity', '4')
+            ->call('addProductVariantLine')
+            ->set('productVariantLines.1.product_variant_id', $blue->id)
+            ->set('productVariantLines.1.quantity', '')
+            ->call('addProductVariantLine')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(
+            [
+                ['product_variant_id' => $red->id, 'quantity' => 4],
+                ['product_variant_id' => $blue->id, 'quantity' => 0],
+            ],
+            $shipment->fresh()->productVariantLines
+                ->map(fn ($line): array => ['product_variant_id' => $line->product_variant_id, 'quantity' => $line->quantity])
+                ->all(),
+        );
+
+        Livewire::test(Form::class, ['shipment' => $shipment->fresh(), 'foreignTrade' => true])
+            ->assertSet('productVariantLines', [
+                ['product_variant_id' => $red->id, 'quantity' => '4'],
+                ['product_variant_id' => $blue->id, 'quantity' => '0'],
+            ]);
+    }
+
+    public function test_foreign_trade_variant_lines_only_allow_variants_of_selected_product(): void
+    {
+        $product = Product::factory()->create();
+        $otherProduct = Product::factory()->create();
+        $variant = ProductVariant::create(['product_id' => $otherProduct->id, 'color' => 'Rojo']);
+        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->call('addProductVariantLine')
+            ->set('productVariantLines.0.product_variant_id', $variant->id)
+            ->set('productVariantLines.0.quantity', '1')
+            ->call('save')
+            ->assertHasErrors('productVariantLines.0.product_variant_id');
+
+        $this->assertDatabaseCount('msc_shipment_product_variants', 0);
+    }
+
+    public function test_changing_product_clears_selected_variant_lines(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo']);
+        $otherProduct = Product::factory()->create();
+        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment->productVariantLines()->create(['product_variant_id' => $variant->id, 'quantity' => 5]);
+
+        Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
+            ->set('product_id', $otherProduct->id)
+            ->assertSet('productVariantLines', [])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertCount(0, $shipment->fresh()->productVariantLines);
+    }
+
+    public function test_international_form_does_not_display_or_overwrite_variant_lines(): void
+    {
+        $product = Product::factory()->create();
+        $variant = ProductVariant::create(['product_id' => $product->id, 'color' => 'Rojo']);
+        $shipment = MscShipment::factory()->create(['product_id' => $product->id]);
+        $shipment->productVariantLines()->create(['product_variant_id' => $variant->id, 'quantity' => 7]);
+
+        $this->get(route('msc.edit', $shipment))->assertDontSee('Variante del producto');
+
+        Livewire::test(Form::class, ['shipment' => $shipment])
+            ->set('productVariantLines', [])
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame(7, $shipment->fresh()->productVariantLines->sole()->quantity);
     }
 
     public function test_international_form_does_not_expose_or_overwrite_foreign_trade_phase_one_data(): void
