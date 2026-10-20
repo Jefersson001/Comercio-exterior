@@ -26,7 +26,7 @@ class Import extends Component
 
     public function import(ImportMscShipments $importer): void
     {
-        Gate::authorize('manage-msc');
+        $this->authorizeMscContext();
         $this->validate(['file' => ['required', 'file', 'mimes:xlsx', 'extensions:xlsx', 'max:10240']], [
             'file.required' => 'Selecciona el archivo MSC.',
             'file.mimes' => 'Selecciona un archivo Excel .xlsx válido.',
@@ -37,7 +37,7 @@ class Import extends Component
             return;
         }
         try {
-            $result = $importer->handle($this->file->getRealPath(), foreignTrade: $this->foreignTrade);
+            $result = $importer->handle($this->file->getRealPath(), foreignTrade: $this->foreignTrade, allowForeignTrade: Gate::allows('access-foreign-trade'));
         } catch (InvalidArgumentException $exception) {
             $this->addError('file', $exception->getMessage());
 

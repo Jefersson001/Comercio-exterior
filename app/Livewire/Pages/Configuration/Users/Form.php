@@ -31,6 +31,12 @@ class Form extends Component
 
     public bool $is_active = true;
 
+    public bool $access_international_trade = false;
+
+    public bool $access_foreign_trade = false;
+
+    public bool $access_configuration = false;
+
     public function boot(): void
     {
         Gate::authorize('manage-users');
@@ -45,6 +51,9 @@ class Form extends Component
             $this->email = $user->email;
             $this->role = $user->role->value;
             $this->is_active = $user->is_active;
+            $this->access_international_trade = $user->access_international_trade;
+            $this->access_foreign_trade = $user->access_foreign_trade;
+            $this->access_configuration = $user->access_configuration;
         }
     }
 
@@ -63,6 +72,9 @@ class Form extends Component
             'password' => [$this->userId ? 'nullable' : 'required', 'string', 'max:255', Password::min(8), 'confirmed'],
             'role' => ['required', Rule::enum(UserRole::class)],
             'is_active' => ['required', 'boolean'],
+            'access_international_trade' => ['required', 'boolean'],
+            'access_foreign_trade' => ['required', 'boolean'],
+            'access_configuration' => ['required', 'boolean'],
         ], attributes: [
             'name' => 'nombre', 'last_name' => 'apellido', 'email' => 'correo electrónico',
             'password' => 'contraseña', 'role' => 'rol', 'is_active' => 'estado',
@@ -78,6 +90,9 @@ class Form extends Component
         $user->fill(['name' => $this->name, 'last_name' => $this->last_name, 'email' => $this->email]);
         $user->role = UserRole::from($validated['role']);
         $user->is_active = $validated['is_active'];
+        $user->access_international_trade = $validated['access_international_trade'];
+        $user->access_foreign_trade = $validated['access_foreign_trade'];
+        $user->access_configuration = $validated['access_configuration'];
 
         if ($this->password !== '') {
             $user->password = $this->password;

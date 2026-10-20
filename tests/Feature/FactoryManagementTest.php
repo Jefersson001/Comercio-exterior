@@ -20,14 +20,14 @@ class FactoryManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_factories_are_managed_only_by_administrators(): void
+    public function test_active_users_can_manage_factories(): void
     {
         $this->get(route('configuration.factories.index'))->assertRedirect(route('login'));
         $this->actingAs(User::factory()->create());
         foreach (['index', 'create', 'import', 'export', 'template'] as $action) {
-            $this->get(route('configuration.factories.'.$action))->assertForbidden();
+            $this->get(route('configuration.factories.'.$action))->assertOk();
         }
-        Livewire::test(Form::class)->assertForbidden();
+        Livewire::test(Form::class)->assertOk();
     }
 
     public function test_administrator_can_create_edit_search_and_not_delete_used_factories(): void

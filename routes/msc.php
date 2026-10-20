@@ -6,7 +6,7 @@ use App\Livewire\Pages\Msc\Import;
 use App\Livewire\Pages\Msc\Index;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'can:manage-msc'])->prefix('msc')->name('msc.')->group(function (): void {
+Route::middleware(['auth', 'can:access-international-trade'])->prefix('msc')->name('msc.')->group(function (): void {
     Route::get('/', Index::class)->name('index');
     Route::get('crear', Form::class)->name('create');
     Route::get('importar', Import::class)->name('import');
@@ -16,7 +16,7 @@ Route::middleware(['auth', 'can:manage-msc'])->prefix('msc')->name('msc.')->grou
     Route::get('{shipment}/editar', Form::class)->name('edit');
 });
 
-Route::middleware(['auth', 'can:manage-msc'])->prefix('comercio-exterior/msc')->name('foreign-trade.msc.')->group(function (): void {
+Route::middleware(['auth', 'can:access-foreign-trade'])->prefix('comercio-exterior/msc')->name('foreign-trade.msc.')->group(function (): void {
     Route::get('/', Index::class)->defaults('foreignTrade', true)->name('index');
     Route::get('crear', Form::class)->defaults('foreignTrade', true)->name('create');
     Route::get('importar', Import::class)->defaults('foreignTrade', true)->name('import');

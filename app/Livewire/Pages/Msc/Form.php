@@ -393,7 +393,7 @@ class Form extends Component
 
     public function save(): void
     {
-        Gate::authorize('manage-msc');
+        $this->authorizeMscContext();
         foreach (['bl_master', 'bl_house', 'released', 'units_qty', 'status'] as $field) {
             $this->{$field} = trim($this->{$field});
         }
@@ -552,7 +552,7 @@ class Form extends Component
 
     public function delete(): void
     {
-        Gate::authorize('manage-msc');
+        $this->authorizeMscContext();
         abort_if($this->shipmentId === null, 404);
         MscShipment::findOrFail($this->shipmentId)->delete();
         session()->flash('status', 'Registro MSC eliminado correctamente.');

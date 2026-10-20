@@ -14,6 +14,7 @@ use App\Support\MscReportFields;
 use App\Support\SpreadsheetLayout;
 use App\Support\SpreadsheetTemplateLists;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use OpenSpout\Common\Entity\Cell\NumericCell;
 use OpenSpout\Common\Entity\Cell\StringCell;
@@ -131,6 +132,7 @@ class MscSpreadsheetController extends Controller
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
+        Gate::authorize($foreignTradeContext ? 'access-foreign-trade' : 'access-international-trade');
         $isForeignTradeRoute = $request->routeIs('foreign-trade.msc.*');
         $relations = $isForeignTradeRoute
             ? ['product', 'productLines.product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant']
@@ -156,6 +158,7 @@ class MscSpreadsheetController extends Controller
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
+        Gate::authorize($foreignTradeContext ? 'access-foreign-trade' : 'access-international-trade');
         $shipments = MscShipment::query()
             ->with(['product', 'productLines.product', 'factoryRecord'])
             ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')

@@ -44,6 +44,7 @@
                         Inicio
                     </a>
 
+                    @can('access-international-trade')
                     <details id="international-trade-menu" class="group" @if(request()->routeIs('international-trade.*', 'msc.*')) open @endif>
                         <summary class="flex cursor-pointer list-none items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5 [&::-webkit-details-marker]:hidden">
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M3 12h18M12 3a17 17 0 0 1 0 18 17 17 0 0 1 0-18Z"/></svg>
@@ -55,6 +56,8 @@
                         </div>
                     </details>
 
+                    @endcan
+                    @can('access-foreign-trade')
                     <details id="foreign-trade-menu" class="group" @if(request()->routeIs('foreign-trade.*')) open @endif>
                         <summary class="flex cursor-pointer list-none items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5 [&::-webkit-details-marker]:hidden">
                             <svg class="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m12 3 9 5v8l-9 5-9-5V8l9-5Zm0 10v8M3 8l9 5 9-5M7.5 5.5l9 5"/></svg>
@@ -66,7 +69,8 @@
                         </div>
                     </details>
 
-                    @can('manage-users')
+                    @endcan
+                    @can('manage-configuration')
                         @php($configurationOpen = request()->routeIs('configuration.*'))
                         <details id="configuration-menu" class="group" @if ($configurationOpen) open @endif>
                             <summary @class(['flex cursor-pointer list-none items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition [&::-webkit-details-marker]:hidden', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' => $configurationOpen, 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5' => ! $configurationOpen])>
@@ -75,7 +79,9 @@
                                 <svg class="size-4 shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg>
                             </summary>
                             <div class="mt-2 ml-6 flex flex-col gap-1 border-l border-slate-200 pl-3 dark:border-white/10">
+                                @can('manage-users')
                                 <a href="{{ route('configuration.users.index') }}" @class(['flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' => request()->routeIs('configuration.users.*'), 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5' => ! request()->routeIs('configuration.users.*')]) @if(request()->routeIs('configuration.users.*')) aria-current="page" @endif>Usuarios</a>
+                                @endcan
                                 @can('manage-products')
                                     <a href="{{ route('configuration.products.index') }}" @class(['flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' => request()->routeIs('configuration.products.*'), 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5' => ! request()->routeIs('configuration.products.*')]) @if(request()->routeIs('configuration.products.*')) aria-current="page" @endif>Productos</a>
                                 @endcan

@@ -36,6 +36,18 @@
                 @if ($userId === auth()->id())<p class="mt-2 text-sm text-indigo-600 dark:text-indigo-300">Por seguridad, no puedes desactivar tu cuenta ni cambiar tu propio rol.</p>@endif
                 @error('is_active')<p role="alert" class="mt-2 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>@enderror
             </div>
+            <div class="sm:col-span-2 rounded-xl border border-slate-200 p-5 dark:border-white/10">
+                <h4 class="font-semibold">Permisos de acceso</h4>
+                <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Activa los accesos que tendrá esta cuenta. Configuración permite administrar Productos, Categorías, Fábricas y Buques. Usuarios es exclusivo de administradores. Los administradores conservan acceso completo.</p>
+                <div class="mt-4 flex flex-wrap gap-5">
+                    <label class="inline-flex items-center gap-3 text-sm font-semibold"><input type="checkbox" wire:model="access_international_trade" class="size-5 rounded border-slate-300 text-indigo-600">Acceso a Comercio Internacional</label>
+                    <label class="inline-flex items-center gap-3 text-sm font-semibold"><input type="checkbox" wire:model="access_foreign_trade" class="size-5 rounded border-slate-300 text-indigo-600">Acceso a Comercio Exterior</label>
+                    <label class="inline-flex items-center gap-3 text-sm font-semibold"><input type="checkbox" wire:model="access_configuration" class="size-5 rounded border-slate-300 text-indigo-600">Acceso a Configuración</label>
+                </div>
+                @error('access_international_trade')<p role="alert" class="mt-2 text-sm text-rose-600">{{ $message }}</p>@enderror
+                @error('access_foreign_trade')<p role="alert" class="mt-2 text-sm text-rose-600">{{ $message }}</p>@enderror
+                @error('access_configuration')<p role="alert" class="mt-2 text-sm text-rose-600">{{ $message }}</p>@enderror
+            </div>
         </fieldset>
 
         <div class="mt-8 flex flex-wrap justify-end gap-3 border-t border-slate-200 pt-6 dark:border-white/10">

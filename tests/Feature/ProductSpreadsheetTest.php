@@ -69,7 +69,7 @@ class ProductSpreadsheetTest extends TestCase
         return $rows;
     }
 
-    public function test_spreadsheet_routes_are_restricted_to_administrators(): void
+    public function test_spreadsheet_routes_are_available_to_active_users(): void
     {
         $urls = [route('configuration.products.import'), route('configuration.products.export'), route('configuration.products.template')];
         foreach ($urls as $url) {
@@ -77,9 +77,9 @@ class ProductSpreadsheetTest extends TestCase
         }
         $this->actingAs(User::factory()->create());
         foreach ($urls as $url) {
-            $this->get($url)->assertForbidden();
+            $this->get($url)->assertOk();
         }
-        Livewire::test(Import::class)->assertForbidden();
+        Livewire::test(Import::class)->assertOk();
     }
 
     public function test_import_page_and_list_show_the_spreadsheet_actions(): void
@@ -221,7 +221,7 @@ class ProductSpreadsheetTest extends TestCase
     {
         $admin = $this->signInAdministrator();
         $component = Livewire::test(Import::class)->set('file', $this->spreadsheet([['Nombre'], ['Producto']]));
-        $admin->role = UserRole::User;
+        $admin->is_active = false;
         $admin->save();
         $component->call('import')->assertForbidden();
         $this->assertDatabaseCount('products', 0);

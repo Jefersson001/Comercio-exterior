@@ -59,7 +59,7 @@ class ProductManagementTest extends TestCase
         );
     }
 
-    public function test_products_require_an_authenticated_administrator(): void
+    public function test_products_require_an_active_authenticated_user(): void
     {
         $product = Product::factory()->create();
         $urls = [route('configuration.products.index'), route('configuration.products.create'), route('configuration.products.edit', $product)];
@@ -70,11 +70,11 @@ class ProductManagementTest extends TestCase
 
         $this->actingAs(User::factory()->create());
         foreach ($urls as $url) {
-            $this->get($url)->assertForbidden();
+            $this->get($url)->assertOk();
         }
 
-        Livewire::test(Index::class)->assertForbidden();
-        Livewire::test(Form::class)->assertForbidden();
+        Livewire::test(Index::class)->assertOk();
+        Livewire::test(Form::class)->assertOk();
     }
 
     public function test_product_category_can_be_assigned_changed_and_cleared(): void
@@ -308,7 +308,7 @@ class ProductManagementTest extends TestCase
         $this->actingAs($admin);
         $product = Product::factory()->create();
         $form = Livewire::test(Form::class, ['product' => $product]);
-        $admin->role = UserRole::User;
+        $admin->is_active = false;
         $admin->save();
         $form->call('delete')->assertForbidden();
         $this->assertModelExists($product);

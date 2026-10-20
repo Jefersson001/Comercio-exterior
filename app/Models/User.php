@@ -23,6 +23,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property string $last_name
  * @property UserRole $role
  * @property bool $is_active
+ * @property bool $access_international_trade
+ * @property bool $access_foreign_trade
+ * @property bool $access_configuration
  * @property string $email
  * @property Carbon|null $email_verified_at
  * @property string $password
@@ -44,6 +47,9 @@ class User extends Authenticatable implements PasskeyUser
         'last_name' => '',
         'role' => 'usuario',
         'is_active' => true,
+        'access_international_trade' => true,
+        'access_foreign_trade' => true,
+        'access_configuration' => true,
     ];
 
     /**
@@ -56,6 +62,9 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'access_international_trade' => 'boolean',
+            'access_foreign_trade' => 'boolean',
+            'access_configuration' => 'boolean',
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];

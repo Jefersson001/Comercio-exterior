@@ -28,11 +28,14 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Gate::define('manage-users', fn (User $user): bool => $user->is_active && $user->isAdministrator());
-        Gate::define('manage-products', fn (User $user): bool => $user->is_active && $user->isAdministrator());
-        Gate::define('manage-categories', fn (User $user): bool => $user->is_active && $user->isAdministrator());
-        Gate::define('manage-factories', fn (User $user): bool => $user->is_active && $user->isAdministrator());
-        Gate::define('manage-vessels', fn (User $user): bool => $user->is_active && $user->isAdministrator());
-        Gate::define('manage-msc', fn (User $user): bool => $user->is_active);
+        Gate::define('manage-configuration', fn (User $user): bool => $user->is_active && ($user->isAdministrator() || $user->access_configuration));
+        Gate::define('manage-products', fn (User $user): bool => $user->can('manage-configuration'));
+        Gate::define('manage-categories', fn (User $user): bool => $user->can('manage-configuration'));
+        Gate::define('manage-factories', fn (User $user): bool => $user->can('manage-configuration'));
+        Gate::define('manage-vessels', fn (User $user): bool => $user->can('manage-configuration'));
+        Gate::define('access-international-trade', fn (User $user): bool => $user->is_active && ($user->isAdministrator() || $user->access_international_trade));
+        Gate::define('access-foreign-trade', fn (User $user): bool => $user->is_active && ($user->isAdministrator() || $user->access_foreign_trade));
+        Gate::define('manage-msc', fn (User $user): bool => $user->can('access-international-trade') || $user->can('access-foreign-trade'));
     }
 
     /**

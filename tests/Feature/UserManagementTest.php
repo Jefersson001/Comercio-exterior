@@ -63,10 +63,10 @@ class UserManagementTest extends TestCase
         $this->get(route('configuration.users.edit', $admin))->assertOk()->assertSee('Editar usuario');
     }
 
-    public function test_regular_users_have_a_home_without_the_configuration_menu(): void
+    public function test_regular_users_have_configuration_without_user_management(): void
     {
         $this->actingAs(User::factory()->create());
-        $this->get(route('dashboard'))->assertOk()->assertSee('Sesión activa')->assertDontSee('configuration-menu');
+        $this->get(route('dashboard'))->assertOk()->assertSee('Sesión activa')->assertSee('configuration-menu')->assertDontSee(route('configuration.users.index'));
     }
 
     public function test_listing_links_to_the_user_form_and_editing_loads_the_selected_user(): void

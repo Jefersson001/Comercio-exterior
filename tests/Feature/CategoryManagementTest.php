@@ -36,14 +36,14 @@ class CategoryManagementTest extends TestCase
         $this->assertFalse($category->fresh()->allows_multiple_products);
     }
 
-    public function test_categories_are_managed_only_by_administrators(): void
+    public function test_active_users_can_manage_categories(): void
     {
         $this->get(route('configuration.categories.index'))->assertRedirect(route('login'));
         $this->actingAs(User::factory()->create());
         foreach (['index', 'create', 'import', 'export', 'template'] as $action) {
-            $this->get(route('configuration.categories.'.$action))->assertForbidden();
+            $this->get(route('configuration.categories.'.$action))->assertOk();
         }
-        Livewire::test(Form::class)->assertForbidden();
+        Livewire::test(Form::class)->assertOk();
     }
 
     public function test_categories_have_tree_form_and_validated_unique_name(): void

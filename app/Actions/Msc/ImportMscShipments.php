@@ -27,13 +27,13 @@ use OpenSpout\Reader\XLSX\Reader;
 class ImportMscShipments
 {
     /** @return array{imported: int, updated: int, skipped: int} */
-    public function handle(string $path, bool $dryRun = false, bool $foreignTrade = false): array
+    public function handle(string $path, bool $dryRun = false, bool $foreignTrade = false, bool $allowForeignTrade = true): array
     {
         $reader = new Reader(new Options(SHOULD_PRESERVE_EMPTY_ROWS: true));
         $reader->open($path);
         $sheetName = null;
         try {
-            return DB::transaction(function () use ($reader, $dryRun, $foreignTrade, &$sheetName): array {
+            return DB::transaction(function () use ($reader, $dryRun, $foreignTrade, $allowForeignTrade, &$sheetName): array {
                 $catalogs = $this->catalogs();
                 $shipments = MscShipment::query()->get()
                     ->mapWithKeys(fn (MscShipment $shipment): array => [
@@ -64,6 +64,9 @@ class ImportMscShipments
                             }
 
                             if ($header['foreign_trade']) {
+                                if (! $allowForeignTrade && array_any($row->toArray(), fn ($value): bool => $this->text($value) !== '')) {
+                                    throw new InvalidArgumentException("Fila {$number}: no tienes permiso para importar datos de Comercio Exterior. No se guardaron cambios.");
+                                }
                                 $this->importForeignTradeRow(
                                     $row,
                                     $number,
