@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MscBillOfLadingStatus;
+use App\Enums\MscShipmentStatus;
 use App\Models\MscShipment;
 use App\Support\MscFields;
 use App\Support\MscReportFields;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use OpenSpout\Common\Entity\Cell\NumericCell;
 use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
@@ -66,6 +69,9 @@ class MscSpreadsheetController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'foreign_trade' => ['sometimes', 'boolean'],
+            'status' => ['nullable', Rule::enum(MscShipmentStatus::class)],
+            'status_bl' => ['nullable', Rule::enum(MscBillOfLadingStatus::class)],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         $isForeignTradeRoute = $request->routeIs('foreign-trade.msc.*');
@@ -73,6 +79,7 @@ class MscSpreadsheetController extends Controller
             ? ['product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant']
             : ['product', 'factoryRecord', 'vessel'];
         $shipments = MscShipment::query()->with($relations)
+            ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')
             ->search(trim((string) $request->input('search', '')), $foreignTradeContext)->orderBy('id')->lazy(500);
 
         if ($isForeignTradeRoute) {
@@ -87,10 +94,15 @@ class MscSpreadsheetController extends Controller
         $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'foreign_trade' => ['sometimes', 'boolean'],
+            'status' => ['nullable', Rule::enum(MscShipmentStatus::class)],
+            'status_bl' => ['nullable', Rule::enum(MscBillOfLadingStatus::class)],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
         ]);
+        $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         $shipments = MscShipment::query()
             ->with(['product', 'factoryRecord'])
-            ->search(trim((string) $request->input('search', '')), $request->boolean('foreign_trade'))
+            ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')
+            ->search(trim((string) $request->input('search', '')), $foreignTradeContext)
             ->orderBy('id')
             ->lazy(500);
 

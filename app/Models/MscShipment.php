@@ -110,6 +110,16 @@ class MscShipment extends Model
     }
 
     /** @param Builder<MscShipment> $query */
+    public function scopeFilters(Builder $query, string $status = '', string $statusBl = '', string $categoryId = ''): void
+    {
+        foreach (['status' => $status, 'status_bl' => $statusBl, 'category_id' => $categoryId] as $column => $value) {
+            if ($value !== '') {
+                $query->where($column, $value);
+            }
+        }
+    }
+
+    /** @param Builder<MscShipment> $query */
     public function scopeSearch(Builder $query, string $search, bool $includeCategory = false): void
     {
         if (trim($search) === '') {
