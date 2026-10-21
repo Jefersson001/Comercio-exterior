@@ -121,7 +121,12 @@ class DashboardTest extends TestCase
         Livewire::test(Dashboard::class)->assertOk()->assertViewHas('shipmentTotal', 0)
             ->assertViewHas('productTotal', 0)->assertViewHas('userTotal', 1)
             ->assertSee('Todavía no hay registros')->assertSee('Todavía no hay buques registrados.');
-        $this->get(route('dashboard'))->assertOk()->assertSee('Actualizar datos');
+        $this->get(route('dashboard'))->assertOk()
+            ->assertSee('wire:poll.60s.keep-alive', false)
+            ->assertDontSee('Actualizar datos')
+            ->assertDontSee('Sesión activa · Vista general')
+            ->assertDontSee('Bienvenido,')
+            ->assertDontSee('Toda tu operación, de un vistazo.');
     }
 
     public function test_factory_totals_counts_and_new_factories_refresh_with_configuration_permissions(): void

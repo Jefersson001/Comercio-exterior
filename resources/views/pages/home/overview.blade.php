@@ -1,15 +1,3 @@
-<div class="dashboard-hero">
-    <div class="min-w-0">
-        <span class="dashboard-live"><span aria-hidden="true"></span>Sesión activa · Vista general</span>
-        <h2>Bienvenido, {{ auth()->user()->full_name }}.</h2>
-        <p>Toda tu operación, de un vistazo. Cantidades de los registros actuales del sistema.</p>
-    </div>
-    <button type="button" wire:click="$refresh" wire:loading.attr="disabled" class="dashboard-refresh">
-        <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7v5h-5M4 17v-5h5m-4-4a8 8 0 0 1 13-3l2 3M4 16l2 3a8 8 0 0 0 13-3"/></svg>
-        <span wire:loading.remove>Actualizar datos</span><span wire:loading>Actualizando…</span>
-    </button>
-</div>
-
 <div class="dashboard-summary" aria-label="Totales generales">
     @if($showTrade)
         <x-dashboard.metric label="Embarques MSC" :value="$shipmentTotal" hint="Registros únicos de embarques" :href="route($mscRoute)" />
@@ -101,4 +89,4 @@
     @endif
     </div>
 @endif
-<p class="dashboard-muted mt-6 text-xs" role="status">Las cantidades se actualizan cada minuto mientras esta página está visible. También puedes usar «Actualizar datos».</p>
+<p class="dashboard-muted mt-6 text-xs" role="status">Las cantidades se actualizan automáticamente cada minuto.</p>

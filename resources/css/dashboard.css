@@ -8,21 +8,7 @@
 .dark .erp-app .dashboard-home [data-tone="amber"] { --chart: #fcd34d; --chart-soft: #3b3422; }
 .dark .erp-app .dashboard-home [data-tone="cyan"] { --chart: #67e8f9; --chart-soft: #18394a; }
 .dark .erp-app .dashboard-home [data-tone="slate"] { --chart: #cbd5e1; --chart-soft: #2c384b; }
-.erp-app .dashboard-hero {
-    display: flex; align-items: center; justify-content: space-between; gap: 24px;
-    position: relative; overflow: hidden; padding: 30px 32px; border-radius: 16px;
-    background: radial-gradient(ellipse at 95% 0%, #1c70ba 0%, transparent 60%), linear-gradient(120deg, #102e5b, #174a88);
-    border: 1px solid #2b568a; color: #fff; box-shadow: 0 8px 24px #163c6910;
-}
-.erp-app .dashboard-hero h2 { color: #fff; font-size: clamp(22px, 2vw, 29px); margin: 12px 0 8px; line-height: 1.25; }
-.erp-app .dashboard-hero p { color: #d8e8fa; font-size: 13px; line-height: 1.6; }
-.erp-app .dashboard-live { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .05em; color: #e3efff; }
-.erp-app .dashboard-live > span { width: 7px; height: 7px; border-radius: 50%; background: #7be8ca; box-shadow: 0 0 0 4px #7be8ca18; }
-.erp-app .dashboard-refresh { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 8px; padding: 10px 14px; color: #fff; border: 1px solid #ffffff50; border-radius: 8px; background: #ffffff12; font-size: 12px; font-weight: 600; }
-.erp-app .dashboard-refresh:hover { background: #ffffff22; }
-.erp-app .dashboard-refresh:focus-visible { outline-color: #fff; }
-.erp-app .dashboard-refresh:disabled { opacity: .65; }
-.erp-app .dashboard-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 14px; margin-top: 22px; }
+.erp-app .dashboard-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 14px; margin-top: 0; }
 .erp-app .dashboard-metric { display: block; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); transition: border-color .15s, transform .15s; box-shadow: 0 3px 12px #00000003; }
 .erp-app .dashboard-metric:hover { border-color: var(--chart); transform: translateY(-2px); }
 .erp-app .dashboard-icon { display: inline-grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 10px; color: var(--chart); background: var(--chart-soft); }
@@ -75,7 +61,6 @@
     .erp-app .dashboard-summary .dashboard-metric-label { min-height: 36px; line-height: 18px; }
 }
 @media(max-width: 640px) {
-    .erp-app .dashboard-hero { padding: 24px; align-items: start; flex-direction: column; gap: 18px; }
     .erp-app .dashboard-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .erp-app .dashboard-metric { padding: 15px; }
     .erp-app .dashboard-metric-value { font-size: 27px; }
