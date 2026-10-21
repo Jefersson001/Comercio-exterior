@@ -6,6 +6,7 @@ use App\Enums\MscBillOfLadingStatus;
 use App\Enums\MscShipmentStatus;
 use App\Livewire\Pages\Msc\Index;
 use App\Models\Category;
+use App\Models\Factory;
 use App\Models\MscShipment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,57 @@ use Tests\TestCase;
 class MscFiltersTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_factory_filter_combines_with_status_and_applies_to_both_contexts_and_reports(): void
+    {
+        $this->actingAs(User::factory()->create());
+        $factory = Factory::factory()->create();
+        $other = Factory::factory()->create();
+        $matching = MscShipment::factory()->create(['factory_id' => $factory->id, 'status' => MscShipmentStatus::Puerto]);
+        $otherFactory = MscShipment::factory()->create(['factory_id' => $other->id, 'status' => MscShipmentStatus::Puerto]);
+        $otherStatus = MscShipment::factory()->create(['factory_id' => $factory->id, 'status' => MscShipmentStatus::Navegando]);
+
+        foreach ([false, true] as $foreignTrade) {
+            $prefix = $foreignTrade ? 'foreign-trade.msc.' : 'msc.';
+            $component = Livewire::test(Index::class, ['foreignTrade' => $foreignTrade])
+                ->assertSee('id="msc-factory"', false)
+                ->set('factory_id', (string) $factory->id)
+                ->assertSee($matching->bl_master)->assertSee($otherStatus->bl_master)->assertDontSee($otherFactory->bl_master)
+                ->set('status', MscShipmentStatus::Puerto->value)->assertDontSee($otherStatus->bl_master);
+            foreach (['export', 'export-direct'] as $action) {
+                $parameters = ['search' => '', 'foreign_trade' => $foreignTrade, 'status' => MscShipmentStatus::Puerto->value, 'factory_id' => (string) $factory->id];
+                $link = 'href="'.htmlspecialchars(route($prefix.$action, $parameters), ENT_QUOTES).'"';
+                if ($foreignTrade || $action !== 'export-direct') {
+                    $component->assertSee($link, false);
+                } else {
+                    $component->assertDontSee($link, false);
+                }
+                $response = $this->get(route($prefix.$action, $parameters))->assertOk();
+                $path = $response->baseResponse->getFile()->getPathname();
+                $reader = new Reader;
+                $values = [];
+                try {
+                    $reader->open($path);
+                    foreach ($reader->getSheetIterator() as $sheet) {
+                        foreach ($sheet->getRowIterator() as $row) {
+                            array_push($values, ...$row->toArray());
+                        }
+                    }
+                } finally {
+                    $reader->close();
+                    unlink($path);
+                }
+                $this->assertContains($matching->bl_master, $values);
+                $this->assertNotContains($otherFactory->bl_master, $values);
+                $this->assertNotContains($otherStatus->bl_master, $values);
+            }
+            $this->get(route($prefix.'index', ['factory_id' => $factory->id]))->assertOk()
+                ->assertSee($matching->bl_master)->assertDontSee($otherFactory->bl_master);
+            $component->call('gotoPage', 2)->set('factory_id', (string) $other->id)->assertSet('paginators.page', 1)
+                ->call('clearFilters')->assertSet('factory_id', '')->assertSet('status', '')
+                ->assertSee($matching->bl_master)->assertSee($otherFactory->bl_master);
+        }
+    }
 
     public function test_foreign_trade_filters_combine_with_search_and_can_be_cleared(): void
     {
@@ -101,7 +153,7 @@ class MscFiltersTest extends TestCase
 
         foreach ([
             ['foreign-trade.msc.export', $parameters, $matching],
-            ['msc.export-direct', $parameters, $matching],
+            ['foreign-trade.msc.export-direct', $parameters, $matching],
             ['msc.export', ['status' => MscShipmentStatus::Navegando->value], $navigating],
             ['msc.export-direct', ['status' => MscShipmentStatus::Navegando->value], $navigating],
         ] as [$route, $filters, $expected]) {
@@ -109,7 +161,12 @@ class MscFiltersTest extends TestCase
                 $component = Livewire::test(Index::class)->set('status', $filters['status']);
                 $filters = ['search' => '', 'foreign_trade' => false, ...$filters];
             }
-            $component->assertSee('href="'.htmlspecialchars(route($route, $filters), ENT_QUOTES).'"', false);
+            $link = 'href="'.htmlspecialchars(route($route, $filters), ENT_QUOTES).'"';
+            if ($route === 'msc.export-direct') {
+                $component->assertDontSee($link, false);
+            } else {
+                $component->assertSee($link, false);
+            }
             $response = $this->get(route($route, $filters))->assertOk();
             $path = $response->baseResponse->getFile()->getPathname();
             $reader = new Reader;

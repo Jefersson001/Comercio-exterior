@@ -138,9 +138,9 @@ class MscShipment extends Model
     }
 
     /** @param Builder<MscShipment> $query */
-    public function scopeFilters(Builder $query, string $status = '', string $statusBl = '', string $categoryId = ''): void
+    public function scopeFilters(Builder $query, string $status = '', string $statusBl = '', string $categoryId = '', string $factoryId = ''): void
     {
-        foreach (['status' => $status, 'status_bl' => $statusBl, 'category_id' => $categoryId] as $column => $value) {
+        foreach (['status' => $status, 'status_bl' => $statusBl, 'category_id' => $categoryId, 'factory_id' => $factoryId] as $column => $value) {
             if ($value !== '') {
                 $query->where($column, $value);
             }

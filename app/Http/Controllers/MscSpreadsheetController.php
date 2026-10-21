@@ -130,6 +130,7 @@ class MscSpreadsheetController extends Controller
             'status' => ['nullable', Rule::enum(MscShipmentStatus::class)],
             'status_bl' => ['nullable', Rule::enum(MscBillOfLadingStatus::class)],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'factory_id' => ['nullable', 'integer', 'exists:factories,id'],
         ]);
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         Gate::authorize($foreignTradeContext ? 'access-foreign-trade' : 'access-international-trade');
@@ -138,7 +139,7 @@ class MscSpreadsheetController extends Controller
             ? ['product', 'productLines.product', 'category', 'factoryRecord', 'vessel', 'containers', 'productVariantLines.productVariant']
             : ['product', 'productLines.product', 'factoryRecord', 'vessel'];
         $shipments = MscShipment::query()->with($relations)
-            ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')
+            ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '', (string) $request->input('factory_id'))
             ->search(trim((string) $request->input('search', '')), $foreignTradeContext)->orderBy('id')->lazy(500);
 
         if ($isForeignTradeRoute) {
@@ -156,12 +157,13 @@ class MscSpreadsheetController extends Controller
             'status' => ['nullable', Rule::enum(MscShipmentStatus::class)],
             'status_bl' => ['nullable', Rule::enum(MscBillOfLadingStatus::class)],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'factory_id' => ['nullable', 'integer', 'exists:factories,id'],
         ]);
         $foreignTradeContext = $request->boolean('foreign_trade') || $request->routeIs('foreign-trade.msc.*');
         Gate::authorize($foreignTradeContext ? 'access-foreign-trade' : 'access-international-trade');
         $shipments = MscShipment::query()
             ->with(['product', 'productLines.product', 'factoryRecord'])
-            ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '')
+            ->filters((string) $request->input('status'), $foreignTradeContext ? (string) $request->input('status_bl') : '', $foreignTradeContext ? (string) $request->input('category_id') : '', (string) $request->input('factory_id'))
             ->search(trim((string) $request->input('search', '')), $foreignTradeContext)
             ->orderBy('id')
             ->lazy(500);

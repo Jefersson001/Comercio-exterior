@@ -6,6 +6,7 @@ use App\Concerns\InteractsWithMscContext;
 use App\Enums\MscBillOfLadingStatus;
 use App\Enums\MscShipmentStatus;
 use App\Models\Category;
+use App\Models\Factory;
 use App\Models\MscShipment;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -30,6 +31,9 @@ class Index extends Component
     #[Url(except: '')]
     public string $category_id = '';
 
+    #[Url(except: '')]
+    public string $factory_id = '';
+
     public function boot(): void
     {
         Gate::authorize('manage-msc');
@@ -42,14 +46,14 @@ class Index extends Component
 
     public function updated(string $property): void
     {
-        if (in_array($property, ['status', 'status_bl', 'category_id'], true)) {
+        if (in_array($property, ['status', 'status_bl', 'category_id', 'factory_id'], true)) {
             $this->resetPage();
         }
     }
 
     public function clearFilters(): void
     {
-        $this->reset('status', 'status_bl', 'category_id');
+        $this->reset('status', 'status_bl', 'category_id', 'factory_id');
         $this->resetPage();
     }
 
@@ -58,6 +62,7 @@ class Index extends Component
     {
         return ['search' => $this->search, 'foreign_trade' => $this->foreignTrade,
             ...($this->status !== '' ? ['status' => $this->status] : []),
+            ...($this->factory_id !== '' ? ['factory_id' => $this->factory_id] : []),
             ...($this->foreignTrade ? array_filter([
                 'status_bl' => $this->status_bl,
                 'category_id' => $this->category_id,
@@ -76,8 +81,9 @@ class Index extends Component
             'statuses' => MscShipmentStatus::options(),
             'billOfLadingStatuses' => MscBillOfLadingStatus::cases(),
             'categories' => $this->foreignTrade ? Category::query()->orderBy('name')->get() : collect(),
+            'factories' => Factory::query()->orderBy('name')->get(),
             'shipments' => MscShipment::query()->with($this->foreignTrade ? ['product', 'productLines.product', 'category', 'factoryRecord', 'vessel'] : ['product', 'productLines.product', 'factoryRecord', 'vessel'])
-                ->filters($this->status, $this->foreignTrade ? $this->status_bl : '', $this->foreignTrade ? $this->category_id : '')
+                ->filters($this->status, $this->foreignTrade ? $this->status_bl : '', $this->foreignTrade ? $this->category_id : '', $this->factory_id)
                 ->search($this->search, $this->foreignTrade)->orderByDesc('id')->paginate(20),
         ])->layout('layouts.dashboard', ['title' => 'MSC', 'heading' => 'MSC']);
     }

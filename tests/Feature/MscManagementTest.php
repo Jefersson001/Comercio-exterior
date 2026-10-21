@@ -45,14 +45,14 @@ class MscManagementTest extends TestCase
         $response->assertSee('href="'.route('msc.index').'"', false)
             ->assertSee('href="'.route('foreign-trade.msc.index').'"', false);
         $response->assertSee('Reporte Control Carga Interno')
-            ->assertSee('Reporte Control Carga Direct')
+            ->assertDontSee('Reporte Control Carga Direct')
             ->assertSee('href="'.str_replace('&', '&amp;', route('msc.export', ['search' => '', 'foreign_trade' => false])).'"', false)
-            ->assertSee('href="'.str_replace('&', '&amp;', route('msc.export-direct', ['search' => '', 'foreign_trade' => false])).'"', false);
+            ->assertDontSee('href="'.str_replace('&', '&amp;', route('msc.export-direct', ['search' => '', 'foreign_trade' => false])).'"', false);
         $this->get(route('foreign-trade.msc.index'))->assertOk()
             ->assertSee('Reporte Control Carga Interno')
             ->assertSee('Reporte Control Carga Direct')
             ->assertSee('href="'.str_replace('&', '&amp;', route('foreign-trade.msc.export', ['search' => '', 'foreign_trade' => true])).'"', false)
-            ->assertSee('href="'.str_replace('&', '&amp;', route('msc.export-direct', ['search' => '', 'foreign_trade' => true])).'"', false);
+            ->assertSee('href="'.str_replace('&', '&amp;', route('foreign-trade.msc.export-direct', ['search' => '', 'foreign_trade' => true])).'"', false);
         $response->assertSee('data-href="'.route('msc.edit', $shipment).'"', false);
         $this->get(route('msc.create'))->assertOk()->assertSee('Se asignará al guardar');
         $this->get(route('msc.edit', $shipment))->assertOk()->assertSee('MSC No. '.$shipment->id);
