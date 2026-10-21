@@ -64,16 +64,24 @@
     </div>
 @endif
 
-@if($showConfiguration)
-    <div class="dashboard-section-heading"><div><p class="dashboard-eyebrow">Proveedores</p><h3>Fábricas</h3></div></div>
+@if($showConfiguration || $showUsers)
+    <div class="dashboard-section-heading"><div><p class="dashboard-eyebrow">Catálogos y equipo</p><h3>Fábricas y usuarios</h3></div></div>
+    <div class="dashboard-grid">
+    @if($showConfiguration)
     <article class="dashboard-panel" data-dashboard-section="factories" data-tone="teal">
         <div class="dashboard-panel-heading"><div><p class="dashboard-eyebrow">Configuración</p><h3>Fábricas registradas</h3><p class="dashboard-muted mt-1 text-xs">{{ $showTrade ? 'Cantidad de embarques asociados a cada fábrica.' : 'Catálogo de fábricas disponibles.' }}</p></div><span class="dashboard-total">{{ $factories->count() }}</span></div>
         <div class="dashboard-vessels">
             @forelse($factories as $factory)
-                <a class="dashboard-vessel" href="{{ route('configuration.factories.edit', $factory) }}" data-factory="{{ $factory->id }}">
-                    <span class="dashboard-icon"><x-dashboard.icon name="factory" /></span><span class="min-w-0 grow break-words">{{ $factory->name }}</span>
-                    @if($showTrade)<span class="shrink-0 text-right"><strong>{{ $factory->msc_shipments_count }}</strong><span class="dashboard-muted ml-1 text-xs">embarques</span></span>@else<span aria-hidden="true">↗</span>@endif
-                </a>
+                <div class="dashboard-vessel" data-factory="{{ $factory->id }}">
+                    <a class="flex min-w-0 grow items-center gap-3" href="{{ route('configuration.factories.edit', $factory) }}">
+                        <span class="dashboard-icon"><x-dashboard.icon name="factory" /></span><span class="min-w-0 break-words">{{ $factory->name }}</span>
+                    </a>
+                    @if($showTrade)
+                        <a class="dashboard-factory-count shrink-0 text-right" href="{{ route($mscRoute, ['factory_id' => $factory->id]) }}" aria-label="Ver {{ $factory->msc_shipments_count }} embarques de {{ $factory->name }}">
+                            <strong>{{ $factory->msc_shipments_count }}</strong><span class="ml-1 text-xs">embarques</span><span class="ml-1" aria-hidden="true">↗</span>
+                        </a>
+                    @else<span aria-hidden="true">↗</span>@endif
+                </div>
             @empty
                 <p class="dashboard-empty">Todavía no hay fábricas registradas.</p>
             @endforelse
@@ -81,17 +89,16 @@
         @if($showTrade)<p class="dashboard-footnote">{{ $shipmentsWithoutFactory }} embarques sin fábrica asignada.</p>@endif
         <a class="dashboard-panel-link" href="{{ route('configuration.factories.index') }}">Ver catálogo de fábricas <span aria-hidden="true">→</span></a>
     </article>
-@endif
+    @endif
 
-@if($showUsers)
-    <div class="dashboard-section-heading"><div><p class="dashboard-eyebrow">Administración</p><h3>Usuarios del sistema</h3></div></div>
-    <div class="dashboard-grid">
+    @if($showUsers)
             <article class="dashboard-panel dashboard-team" data-dashboard-section="users">
                 <div class="dashboard-panel-heading"><div><p class="dashboard-eyebrow">Administración</p><h3>Usuarios del sistema</h3><p class="dashboard-muted mt-1 text-xs">Todas las cuentas registradas, activas e inactivas.</p></div><span class="dashboard-icon"><x-dashboard.icon name="users" /></span></div>
                 <div class="dashboard-team-total"><strong>{{ $userTotal }}</strong><span class="dashboard-muted">usuarios registrados</span></div>
                 <div class="dashboard-user-states"><div><span class="dashboard-state-dot" aria-hidden="true"></span><span>Activos</span><strong>{{ $activeUsers }}</strong></div><div><span class="dashboard-state-dot is-inactive" aria-hidden="true"></span><span>Inactivos</span><strong>{{ $inactiveUsers }}</strong></div></div>
                 <a class="dashboard-panel-link" href="{{ route('configuration.users.index') }}">Administrar usuarios <span aria-hidden="true">→</span></a>
             </article>
+    @endif
     </div>
 @endif
 <p class="dashboard-muted mt-6 text-xs" role="status">Las cantidades se actualizan cada minuto mientras esta página está visible. También puedes usar «Actualizar datos».</p>

@@ -52,6 +52,8 @@
 .erp-app .dashboard-vessels { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .erp-app .dashboard-vessel { display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--line); font-size: 12px; }
 .erp-app .dashboard-vessel:hover { color: var(--brand); }
+.erp-app .dashboard-factory-count { padding: 7px 9px; border-radius: 7px; background: var(--chart-soft); color: var(--chart); }
+.erp-app .dashboard-factory-count:hover { text-decoration: underline; text-underline-offset: 3px; }
 .erp-app .dashboard-vessel:last-child { border-bottom: none; }
 .erp-app .dashboard-vessel .dashboard-icon { width: 32px; height: 32px; border-radius: 8px; }
 .erp-app .dashboard-panel-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12px; font-weight: 600; color: var(--brand); }
@@ -67,8 +69,10 @@
 .erp-app .dashboard-state-dot { width: 7px; height: 7px; border-radius: 50%; background: #0d9488; }
 .erp-app .dashboard-state-dot.is-inactive { background: #94a3b8; }
 .erp-app .dashboard-team .dashboard-panel-link { margin-top: auto; }
-@media(min-width: 1024px) and (max-width: 1535px) {
-    .erp-app .dashboard-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media(min-width: 1024px) {
+    .erp-app .dashboard-summary { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; }
+    .erp-app .dashboard-summary .dashboard-metric { padding: 14px; }
+    .erp-app .dashboard-summary .dashboard-metric-label { min-height: 36px; line-height: 18px; }
 }
 @media(max-width: 640px) {
     .erp-app .dashboard-hero { padding: 24px; align-items: start; flex-direction: column; gap: 18px; }

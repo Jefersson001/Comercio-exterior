@@ -132,6 +132,8 @@ class DashboardTest extends TestCase
         MscShipment::factory()->count(2)->create(['factory_id' => $factory->id]);
         MscShipment::factory()->create(['factory_id' => null]);
         $dashboard = Livewire::test(Dashboard::class)->assertSee('Fábricas registradas')
+            ->assertSee('href="'.route('configuration.factories.edit', $factory).'"', false)
+            ->assertSee('href="'.route('foreign-trade.msc.index', ['factory_id' => $factory->id]).'"', false)
             ->assertViewHas('factories', fn ($rows) => $rows->count() === 2 && $rows->sum('msc_shipments_count') === 2)
             ->assertViewHas('shipmentsWithoutFactory', 1);
         Factory::factory()->create(['name' => 'Fábrica nueva']);
@@ -146,6 +148,12 @@ class DashboardTest extends TestCase
         $user->access_international_trade = $user->access_foreign_trade = false;
         $user->save();
         Livewire::test(Dashboard::class)->assertSee('Fábricas registradas')
-            ->assertViewHas('factories', fn ($rows) => $rows->count() === 3 && ! isset($rows->first()->msc_shipments_count));
+            ->assertViewHas('factories', fn ($rows) => $rows->count() === 3 && ! isset($rows->first()->msc_shipments_count))
+            ->assertDontSee('href="'.route('msc.index', ['factory_id' => $factory->id]).'"', false);
+        $user->access_international_trade = true;
+        $user->save();
+        Livewire::test(Dashboard::class)
+            ->assertSee('href="'.route('msc.index', ['factory_id' => $factory->id]).'"', false)
+            ->assertDontSee('href="'.route('foreign-trade.msc.index', ['factory_id' => $factory->id]).'"', false);
     }
 }
