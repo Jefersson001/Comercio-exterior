@@ -10,12 +10,12 @@ use App\Models\MscShipment;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Vessel;
+use App\Support\HistoryRecorder;
 use App\Support\MscFields;
 use App\Support\MscReportFields;
 use Carbon\CarbonImmutable;
 use DateTimeImmutable;
 use DateTimeInterface;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -33,7 +33,7 @@ class ImportMscShipments
         $reader->open($path);
         $sheetName = null;
         try {
-            return DB::transaction(function () use ($reader, $dryRun, $foreignTrade, $allowForeignTrade, &$sheetName): array {
+            return app(HistoryRecorder::class)->batch(function () use ($reader, $dryRun, $foreignTrade, $allowForeignTrade, &$sheetName): array {
                 $catalogs = $this->catalogs();
                 $shipments = MscShipment::query()->get()
                     ->mapWithKeys(fn (MscShipment $shipment): array => [
@@ -109,7 +109,7 @@ class ImportMscShipments
                     'updated' => count($updatedKeys),
                     'skipped' => $skipped,
                 ];
-            });
+            }, 'import');
         } catch (InvalidArgumentException $exception) {
             throw new InvalidArgumentException($sheetName === null ? $exception->getMessage() : 'Hoja «'.$sheetName.'»: '.$exception->getMessage(), 0, $exception);
         } finally {

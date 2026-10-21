@@ -3,7 +3,7 @@
 namespace App\Actions\Vessels;
 
 use App\Models\Vessel;
-use Illuminate\Support\Facades\DB;
+use App\Support\HistoryRecorder;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Cell\TextRunCell;
@@ -20,7 +20,7 @@ class ImportVessels
         $reader->open($path);
 
         try {
-            return DB::transaction(function () use ($reader): array {
+            return app(HistoryRecorder::class)->batch(function () use ($reader): array {
                 $existing = Vessel::query()->pluck('name')
                     ->mapWithKeys(fn (string $name): array => [Str::lower(Str::ascii(Str::squish($name))) => true])->all();
                 $headerRead = false;
@@ -65,7 +65,9 @@ class ImportVessels
                         $imported++;
 
                         if (count($batch) === 500) {
-                            Vessel::query()->insert($batch);
+                            foreach ($batch as $attributes) {
+                                Vessel::create($attributes);
+                            }
                             $batch = [];
                         }
                     }
@@ -77,11 +79,13 @@ class ImportVessels
                 }
 
                 if ($batch !== []) {
-                    Vessel::query()->insert($batch);
+                    foreach ($batch as $attributes) {
+                        Vessel::create($attributes);
+                    }
                 }
 
                 return ['imported' => $imported, 'skipped' => $skipped];
-            });
+            }, 'import');
         } finally {
             $reader->close();
         }

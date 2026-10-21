@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRecordHistory;
 use App\UserRole;
 use Database\Factories\UserFactory;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -42,6 +43,8 @@ class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
+
+    use HasRecordHistory;
 
     protected $attributes = [
         'last_name' => '',

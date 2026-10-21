@@ -5,8 +5,8 @@ namespace App\Actions\Products;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Support\HistoryRecorder;
 use App\Support\ProductVariantSpreadsheet;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Cell\TextRunCell;
@@ -23,7 +23,7 @@ class ImportProducts
         $reader->open($path);
 
         try {
-            return DB::transaction(function () use ($reader): array {
+            return app(HistoryRecorder::class)->batch(function () use ($reader): array {
                 $existing = [];
                 foreach (Product::query()->get(['id', 'name']) as $product) {
                     $key = $this->normalize($product->name);
@@ -108,7 +108,7 @@ class ImportProducts
                             $variantsAdded = $this->addVariants($product, $colors);
                             if ($changes !== [] || $variantsAdded > 0) {
                                 if ($changes !== []) {
-                                    Product::query()->whereKey($existing[$key])->update($changes);
+                                    $product->update($changes);
                                 }
                                 $updated++;
                             } else {
@@ -138,7 +138,9 @@ class ImportProducts
                         $imported++;
 
                         if (count($batch) === 500) {
-                            Product::query()->insert($batch);
+                            foreach ($batch as $attributes) {
+                                Product::create($attributes);
+                            }
                             $batch = [];
                         }
                     }
@@ -151,11 +153,13 @@ class ImportProducts
                 }
 
                 if ($batch !== []) {
-                    Product::query()->insert($batch);
+                    foreach ($batch as $attributes) {
+                        Product::create($attributes);
+                    }
                 }
 
                 return ['imported' => $imported, 'updated' => $updated, 'skipped' => $skipped];
-            });
+            }, 'import');
         } finally {
             $reader->close();
         }

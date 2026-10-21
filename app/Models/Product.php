@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRecordHistory;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,6 +19,8 @@ class Product extends Model
 {
     /** @use HasFactory<ProductFactory> */
     use HasFactory;
+
+    use HasRecordHistory;
 
     /** @return array<string, string> */
     protected function casts(): array

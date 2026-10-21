@@ -3,7 +3,7 @@
 namespace App\Actions\Factories;
 
 use App\Models\Factory;
-use Illuminate\Support\Facades\DB;
+use App\Support\HistoryRecorder;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Cell\TextRunCell;
@@ -20,7 +20,7 @@ class ImportFactories
         $reader->open($path);
 
         try {
-            return DB::transaction(function () use ($reader): array {
+            return app(HistoryRecorder::class)->batch(function () use ($reader): array {
                 $existing = Factory::query()->pluck('name')
                     ->mapWithKeys(fn (string $name): array => [Str::lower(Str::ascii(Str::squish($name))) => true])->all();
                 $headerRead = false;
@@ -65,7 +65,9 @@ class ImportFactories
                         $imported++;
 
                         if (count($batch) === 500) {
-                            Factory::query()->insert($batch);
+                            foreach ($batch as $attributes) {
+                                Factory::create($attributes);
+                            }
                             $batch = [];
                         }
                     }
@@ -77,11 +79,13 @@ class ImportFactories
                 }
 
                 if ($batch !== []) {
-                    Factory::query()->insert($batch);
+                    foreach ($batch as $attributes) {
+                        Factory::create($attributes);
+                    }
                 }
 
                 return ['imported' => $imported, 'skipped' => $skipped];
-            });
+            }, 'import');
         } finally {
             $reader->close();
         }

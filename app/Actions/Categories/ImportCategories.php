@@ -3,7 +3,7 @@
 namespace App\Actions\Categories;
 
 use App\Models\Category;
-use Illuminate\Support\Facades\DB;
+use App\Support\HistoryRecorder;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use OpenSpout\Common\Entity\Cell\TextRunCell;
@@ -20,7 +20,7 @@ class ImportCategories
         $reader->open($path);
 
         try {
-            return DB::transaction(function () use ($reader): array {
+            return app(HistoryRecorder::class)->batch(function () use ($reader): array {
                 $existing = Category::query()->get()->keyBy(fn (Category $category): string => Str::lower(trim($category->name)));
                 $seen = [];
                 $headerRead = false;
@@ -89,7 +89,9 @@ class ImportCategories
                         $imported++;
 
                         if (count($batch) === 500) {
-                            Category::query()->insert($batch);
+                            foreach ($batch as $attributes) {
+                                Category::create($attributes);
+                            }
                             $batch = [];
                         }
                     }
@@ -102,11 +104,13 @@ class ImportCategories
                 }
 
                 if ($batch !== []) {
-                    Category::query()->insert($batch);
+                    foreach ($batch as $attributes) {
+                        Category::create($attributes);
+                    }
                 }
 
                 return ['imported' => $imported, 'updated' => $updated, 'skipped' => $skipped];
-            });
+            }, 'import');
         } finally {
             $reader->close();
         }

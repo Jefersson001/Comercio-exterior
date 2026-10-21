@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRecordHistory;
 use Database\Factories\FactoryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,8 @@ class Factory extends Model
 {
     /** @use HasFactory<FactoryFactory> */
     use HasFactory;
+
+    use HasRecordHistory;
 
     /** @return HasMany<MscShipment, $this> */
     public function mscShipments(): HasMany

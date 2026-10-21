@@ -1,0 +1,29 @@
+.erp-app .record-history { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
+.erp-app .record-history-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px; border-bottom: 1px solid var(--line); }
+.erp-app .record-history-heading.grid { display: grid; }
+.erp-app .record-history-count, .erp-app .record-history-source { display: inline-block; border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--brand); background: var(--brand-soft); }
+.erp-app .record-history-count { flex-shrink: 0; }
+.erp-app .record-history-source { margin-left: 6px; }
+.erp-app .record-history-body { padding: 0 22px; }
+.erp-app .record-history-entry { display: flex; align-items: start; gap: 14px; padding: 23px 0; border-bottom: 1px solid var(--line); }
+.erp-app .record-history-entry:last-child { border-bottom: none; }
+.erp-app .record-history-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: var(--brand-soft); color: var(--brand); font-size: 13px; font-weight: 650; }
+.erp-app .record-history-details { margin-top: 12px; }
+.erp-app .record-history-details summary { cursor: pointer; color: var(--brand); font-size: 12px; font-weight: 600; }
+.erp-app .record-history-changes { margin-top: 10px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.erp-app .record-history-change { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(0, 3fr); gap: 14px; padding: 12px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.erp-app .record-history-change:last-child { border-bottom: none; }
+.erp-app .record-history-change > strong { overflow-wrap: anywhere; font-weight: 600; }
+.erp-app .record-history-values { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 12px; }
+.erp-app .record-history-values > span { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow-y: auto; }
+.erp-app .record-history-before { color: var(--muted); }
+.erp-app .record-history-after { color: var(--ink); font-weight: 500; }
+.erp-app .record-history-empty { padding: 24px 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.erp-app .record-history-footer { border-top: 1px solid var(--line); padding: 18px 22px; }
+@media(max-width: 640px) {
+    .erp-app .record-history-heading { padding: 17px; flex-wrap: wrap; }
+    .erp-app .record-history-body { padding: 0 17px; }
+    .erp-app .record-history-entry { gap: 10px; }
+    .erp-app .record-history-avatar { width: 28px; height: 28px; }
+    .erp-app .record-history-change { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+}

@@ -18,4 +18,5 @@
             <button type="submit" wire:loading.attr="disabled" class="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 disabled:opacity-60"><span wire:loading.remove wire:target="save">{{ $factoryId ? 'Guardar cambios' : 'Crear fábrica' }}</span><span wire:loading wire:target="save">Guardando...</span></button>
         </div>
     </form>
+    @if($factoryId)<livewire:record-history-panel subject-type="factory" :subject-id="$factoryId" :key="'history-factory-'.$factoryId" />@endif
 </section>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRecordHistory;
 use Database\Factories\VesselFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,8 @@ class Vessel extends Model
 {
     /** @use HasFactory<VesselFactory> */
     use HasFactory;
+
+    use HasRecordHistory;
 
     /** @return HasMany<MscShipment, $this> */
     public function mscShipments(): HasMany

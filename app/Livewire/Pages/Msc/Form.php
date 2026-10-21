@@ -14,9 +14,9 @@ use App\Models\MscShipmentProductVariant;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Vessel;
+use App\Support\HistoryRecorder;
 use App\Support\MscFields;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
@@ -519,7 +519,7 @@ class Form extends Component
                 ->all();
             unset($data['productVariantLines']);
         }
-        $shipment = DB::transaction(function () use ($data, $containerLines, $productVariantLines, $prepared, $variantsEnabled): MscShipment {
+        $shipment = app(HistoryRecorder::class)->batch(function () use ($data, $containerLines, $productVariantLines, $prepared, $variantsEnabled): MscShipment {
             $shipment = $this->shipmentId ? MscShipment::query()->lockForUpdate()->findOrFail($this->shipmentId) : new MscShipment;
             $multipleProducts = $shipment->exists && $shipment->productLines()->count() > 1;
             if (! $this->foreignTrade && $multipleProducts) {

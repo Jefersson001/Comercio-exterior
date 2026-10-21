@@ -81,6 +81,7 @@
                             <div class="mt-2 ml-6 flex flex-col gap-1 border-l border-slate-200 pl-3 dark:border-white/10">
                                 @can('manage-users')
                                 <a href="{{ route('configuration.users.index') }}" @class(['flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' => request()->routeIs('configuration.users.*'), 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5' => ! request()->routeIs('configuration.users.*')]) @if(request()->routeIs('configuration.users.*')) aria-current="page" @endif>Usuarios</a>
+                                <a href="{{ route('configuration.history.index') }}" class="rounded-xl px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5">Historial de cambios</a>
                                 @endcan
                                 @can('manage-products')
                                     <a href="{{ route('configuration.products.index') }}" @class(['flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition', 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300' => request()->routeIs('configuration.products.*'), 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-white/5' => ! request()->routeIs('configuration.products.*')]) @if(request()->routeIs('configuration.products.*')) aria-current="page" @endif>Productos</a>

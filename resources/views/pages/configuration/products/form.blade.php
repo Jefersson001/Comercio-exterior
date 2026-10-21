@@ -58,4 +58,5 @@
             <button type="submit" wire:loading.attr="disabled" class="rounded-xl bg-indigo-500 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-400 disabled:opacity-60"><span wire:loading.remove wire:target="save">{{ $productId ? 'Guardar cambios' : 'Crear producto' }}</span><span wire:loading wire:target="save">Guardando...</span></button>
         </div>
     </form>
+    @if($productId)<livewire:record-history-panel subject-type="product" :subject-id="$productId" :key="'history-product-'.$productId" />@endif
 </section>

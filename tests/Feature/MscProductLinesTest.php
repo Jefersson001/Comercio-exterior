@@ -257,8 +257,9 @@ class MscProductLinesTest extends TestCase
         $migration = require database_path('migrations/2026_10_20_190000_create_msc_shipment_products_table.php');
         $migration->down();
         $product = Product::factory()->create(['units_per_container' => 20]);
-        $manual = MscShipment::factory()->create(['product_id' => $product->id, 'container_qty' => 3, 'units_qty' => 45]);
-        $automatic = MscShipment::factory()->create(['product_id' => $product->id, 'container_qty' => 2, 'units_qty' => null]);
+        // These rows predate both product lines and automatic history tracking.
+        $manual = MscShipment::withoutEvents(fn () => MscShipment::factory()->create(['product_id' => $product->id, 'container_qty' => 3, 'units_qty' => 45]));
+        $automatic = MscShipment::withoutEvents(fn () => MscShipment::factory()->create(['product_id' => $product->id, 'container_qty' => 2, 'units_qty' => null]));
         $migration->up();
         $this->assertSame($product->id, $manual->productLines->sole()->product_id);
         $this->assertSame(45, $manual->totalUnits());

@@ -6,8 +6,8 @@ use App\Models\Category;
 use App\Models\MscShipmentProductVariant;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Support\HistoryRecorder;
 use Illuminate\Contracts\View\View;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
@@ -125,7 +125,7 @@ class Form extends Component
             }
         }
 
-        $product = DB::transaction(function () use ($data, $variantsEnabled): Product {
+        $product = app(HistoryRecorder::class)->batch(function () use ($data, $variantsEnabled): Product {
             $product = $this->productId ? Product::findOrFail($this->productId) : new Product;
             $product->name = $data['name'];
             $product->category_id = $data['category_id'];

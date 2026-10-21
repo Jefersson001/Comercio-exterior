@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRecordHistory;
 use App\Enums\MscBillOfLadingStatus;
 use App\Enums\MscShipmentStatus;
+use App\Support\HistoryRecorder;
 use Database\Factories\MscShipmentFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -52,6 +54,8 @@ class MscShipment extends Model
 {
     /** @use HasFactory<MscShipmentFactory> */
     use HasFactory;
+
+    use HasRecordHistory;
 
     /** @var array<string, mixed> */
     protected $attributes = ['bl_house' => '', 'status' => 'Borrador', 'status_bl' => 'Borrador'];
@@ -144,9 +148,12 @@ class MscShipment extends Model
 
     public function syncSingleProductLine(): void
     {
-        $this->productLines()->delete();
-        $this->productLines()->create(['product_id' => $this->product_id, 'container_qty' => $this->container_qty, 'units_qty' => $this->units_qty]);
-        $this->unsetRelation('productLines');
+        app(HistoryRecorder::class)->batch(function (): void {
+            app(HistoryRecorder::class)->capture($this);
+            $this->productLines()->delete();
+            $this->productLines()->create(['product_id' => $this->product_id, 'container_qty' => $this->container_qty, 'units_qty' => $this->units_qty]);
+            $this->unsetRelation('productLines');
+        });
     }
 
     /** @param Builder<MscShipment> $query */
