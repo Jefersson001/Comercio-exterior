@@ -7,6 +7,7 @@ use App\Support\HistorySubject;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -39,6 +40,7 @@ class RecordHistoryPanel extends Component
         abort_unless($class::whereKey($this->subjectId)->exists(), 404);
     }
 
+    #[On('record-saved')]
     public function render(): View
     {
         $this->authorizeSubject();

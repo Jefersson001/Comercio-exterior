@@ -160,7 +160,12 @@ class Form extends Component
         });
 
         session()->flash('status', $this->productId ? 'Producto actualizado correctamente.' : 'Producto creado correctamente.');
-        $this->redirectRoute('configuration.products.index');
+        if ($this->productId === null) {
+            $this->redirectRoute('configuration.products.index');
+        } else {
+            $this->mount($product->fresh());
+            $this->dispatch('record-saved');
+        }
     }
 
     public function delete(): void

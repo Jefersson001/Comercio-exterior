@@ -486,7 +486,7 @@ class MscCategoryContextTest extends TestCase
         $shipment = $this->foreignShipment();
         $shipment->product->update(['category_id' => $category->id]);
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
-            ->set('category_id', $category->id)->call('save')->assertHasNoErrors()->assertRedirect(route('foreign-trade.msc.index'));
+            ->set('category_id', $category->id)->call('save')->assertHasNoErrors()->assertNoRedirect();
         $this->assertSame($category->id, $shipment->fresh()->category_id);
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
             ->set('category_id', 999999)->call('save')->assertHasErrors('category_id');

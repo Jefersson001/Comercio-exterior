@@ -107,7 +107,11 @@ class Form extends Component
         $this->reset('password', 'password_confirmation');
 
         session()->flash('status', $this->userId ? 'Usuario actualizado correctamente.' : 'Usuario creado correctamente.');
-        $this->redirectRoute('configuration.users.index');
+        if ($this->userId === null) {
+            $this->redirectRoute('configuration.users.index');
+        } else {
+            $this->dispatch('record-saved');
+        }
     }
 
     public function render(): View

@@ -46,7 +46,11 @@ class Form extends Component
         $vessel->save();
 
         session()->flash('status', $this->vesselId ? 'Buque actualizado correctamente.' : 'Buque creado correctamente.');
-        $this->redirectRoute('configuration.vessels.index');
+        if ($this->vesselId === null) {
+            $this->redirectRoute('configuration.vessels.index');
+        } else {
+            $this->dispatch('record-saved');
+        }
     }
 
     public function delete(): void

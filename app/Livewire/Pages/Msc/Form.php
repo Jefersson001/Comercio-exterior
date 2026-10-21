@@ -549,7 +549,11 @@ class Form extends Component
             return $shipment;
         });
         session()->flash('status', 'Registro MSC No. '.$shipment->id.' guardado correctamente.');
-        $this->redirect($this->mscRoute('index'));
+        if ($this->shipmentId === null) {
+            $this->redirect($this->mscRoute('index'));
+        } else {
+            $this->dispatch('record-saved');
+        }
     }
 
     public function delete(): void

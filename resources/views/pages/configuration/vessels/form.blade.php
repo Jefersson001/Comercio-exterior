@@ -7,6 +7,9 @@
         </div>
         <a href="{{ route('configuration.vessels.index') }}" class="inline-flex items-center justify-center rounded-xl border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">Volver a la lista</a>
     </div>
+    @if (session('status'))
+        <div role="status" class="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm font-medium text-emerald-700 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">{{ session('status') }}</div>
+    @endif
     <form data-record-form wire:submit="save" class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
         <div class="mb-8 border-b border-slate-200 pb-6 dark:border-white/10"><p class="text-xs font-semibold tracking-[0.2em] text-indigo-600 uppercase dark:text-indigo-300">Información del buque</p><h3 class="mt-2 text-2xl font-semibold">{{ $vesselId ? $name : 'Nuevo buque' }}</h3></div>
         <fieldset wire:loading.attr="disabled" class="min-w-0"><legend class="sr-only">Datos del buque</legend><x-forms.input name="name" label="Nombre *" wire:model="name" maxlength="255" required autofocus /></fieldset>

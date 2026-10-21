@@ -46,7 +46,11 @@ class Form extends Component
         $factory->save();
 
         session()->flash('status', $this->factoryId ? 'Fábrica actualizada correctamente.' : 'Fábrica creada correctamente.');
-        $this->redirectRoute('configuration.factories.index');
+        if ($this->factoryId === null) {
+            $this->redirectRoute('configuration.factories.index');
+        } else {
+            $this->dispatch('record-saved');
+        }
     }
 
     public function delete(): void

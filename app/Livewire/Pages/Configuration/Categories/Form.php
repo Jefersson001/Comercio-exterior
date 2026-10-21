@@ -51,7 +51,11 @@ class Form extends Component
         $category->save();
 
         session()->flash('status', $this->categoryId ? 'Categoría actualizada correctamente.' : 'Categoría creada correctamente.');
-        $this->redirectRoute('configuration.categories.index');
+        if ($this->categoryId === null) {
+            $this->redirectRoute('configuration.categories.index');
+        } else {
+            $this->dispatch('record-saved');
+        }
     }
 
     public function delete(): void
