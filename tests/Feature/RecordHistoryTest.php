@@ -8,7 +8,7 @@ use App\Actions\Msc\ImportMscShipments;
 use App\Actions\Products\ImportProducts;
 use App\Actions\Vessels\ImportVessels;
 use App\Livewire\Pages\Configuration\Products\Form as ProductForm;
-use App\Livewire\Pages\History\Index as HistoryIndex;
+use App\Livewire\Pages\History\Overview as HistoryIndex;
 use App\Livewire\Pages\Msc\Form as MscForm;
 use App\Livewire\RecordHistoryPanel;
 use App\Models\Category;

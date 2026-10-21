@@ -5,7 +5,7 @@
         <ul class="mt-2 list-inside list-disc space-y-1">
             <li>La plantilla incluye las pestañas Comercio Internacional y Comercio Exterior. Se procesan ambas, primero la pestaña internacional y luego la exterior.</li>
             <li>La pestaña Comercio Internacional crea embarques nuevos y actualiza los existentes identificados por BL Master y BL House. El No. del archivo se ignora; el sistema asigna la numeración.</li>
-            <li>Para crear un embarque, completa ETD, ETA, BL Master, Model, Cant contenedores y Free time. Model debe coincidir con un producto registrado.</li>
+            <li>Para crear un embarque, completa ETA, BL Master, Model, Cant contenedores y Free time. ETD puede quedar vacía si no se conoce. Model debe coincidir con un producto registrado.</li>
             <li>En Comercio Exterior, completa BL Master y BL House para actualizar un embarque existente. Las celdas vacías no borran sus datos; una fila exterior no crea un embarque por sí sola.</li>
             <li>Factory, Buque y Categoría se relacionan cuando coinciden con registros de sus catálogos. También se aceptan archivos anteriores con el encabezado Ship Agent.</li>
             <li>Usa fechas de Excel o el formato AAAA-MM-DD. Free time acepta días numéricos o valores como «21 days».</li>

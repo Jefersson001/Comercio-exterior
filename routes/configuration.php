@@ -18,11 +18,12 @@ use App\Livewire\Pages\Configuration\Users\Index;
 use App\Livewire\Pages\Configuration\Vessels\Form as VesselForm;
 use App\Livewire\Pages\Configuration\Vessels\Import as VesselImport;
 use App\Livewire\Pages\Configuration\Vessels\Index as VesselIndex;
+use App\Livewire\Pages\History\Overview;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'can:manage-users'])
     ->prefix('configuracion')->name('configuration.')->group(function (): void {
-        Route::get('historial', App\Livewire\Pages\History\Index::class)->name('history.index');
+        Route::get('historial', Overview::class)->name('history.index');
         Route::get('usuarios', Index::class)->name('users.index');
         Route::get('usuarios/crear', Form::class)->name('users.create');
         Route::get('usuarios/{user}/editar', Form::class)->name('users.edit');

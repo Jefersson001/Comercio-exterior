@@ -71,7 +71,7 @@ class MscSpreadsheetController extends Controller
                     ['Cant Unidades', 'Si no se conocen las unidades, deja la celda vacía. Una celda vacía no significa cero.'],
                     ['Categoría / TIPO', 'La categoría debe existir en Configuración → Categorías. Los productos de Comercio Exterior deben tener asignada su categoría.'],
                     ['COLORES', 'Solo corresponde a categorías individuales. Usa variantes existentes del producto, por ejemplo: 12 rojo // 5 blanco. Déjala vacía en categorías múltiples.'],
-                    ['Fechas', 'Usa el formato AAAA-MM-DD. ETA debe ser igual o posterior a ETD.'],
+                    ['Fechas', 'Usa el formato AAAA-MM-DD. ETD puede quedar vacía si no se conoce; cuando esté informada, ETA debe ser igual o posterior a ETD.'],
                     ['Estados vacíos', 'Si el embarque no tiene estado asignado, se guardará como Borrador. Lo mismo aplica al Status BL. Borrador indica que el seguimiento está pendiente de completar.'],
                     ['Status del embarque', implode(' | ', array_column(MscShipmentStatus::options(), 'value'))],
                     ['Status BL', implode(' | ', array_column(MscBillOfLadingStatus::cases(), 'value'))],
@@ -299,7 +299,7 @@ class MscSpreadsheetController extends Controller
                         $shipment->factoryRecord?->name ?? '',
                         $shipment->totalUnits() ?? '',
                         implode("\n", $notes),
-                        $shipment->etd->format('Y-m-d'),
+                        ($shipment->etd?->format('Y-m-d') ?? ''),
                         $shipment->eta_vnzl?->format('Y-m-d') ?? '',
                         $shipment->port ?? '',
                     ];
@@ -340,7 +340,7 @@ class MscSpreadsheetController extends Controller
                 $writer->addRow(Row::fromValuesWithStyle(array_values(MscFields::HEADERS), SpreadsheetLayout::header()));
                 foreach ($shipments as $shipment) {
                     $cells = [
-                        new NumericCell($shipment->id), new StringCell($shipment->etd->format('Y-m-d')),
+                        new NumericCell($shipment->id), new StringCell(($shipment->etd?->format('Y-m-d') ?? '')),
                         new StringCell($shipment->eta->format('Y-m-d')), new StringCell($shipment->bl_master ?? ''),
                         new StringCell($shipment->bl_house ?? ''), new StringCell($shipment->factoryRecord?->name ?? ''), new StringCell($shipment->productNames()),
                         new NumericCell($shipment->totalContainers()),

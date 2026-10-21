@@ -9,7 +9,7 @@ use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-class Index extends Component
+class Overview extends Component
 {
     use WithPagination;
 

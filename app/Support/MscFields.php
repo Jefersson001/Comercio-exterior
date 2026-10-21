@@ -20,8 +20,8 @@ class MscFields
     public static function rules(?int $id = null, bool $foreignTrade = false, string $blHouse = ''): array
     {
         return [
-            'etd' => ['required', 'date_format:Y-m-d'],
-            'eta' => ['required', 'date_format:Y-m-d', 'after_or_equal:etd'],
+            'etd' => ['nullable', 'date_format:Y-m-d'],
+            'eta' => ['required', 'date_format:Y-m-d', Rule::when(fn ($data): bool => filled($data->etd), ['after_or_equal:etd'])],
             'bl_master' => ['required', 'string', 'max:255', Rule::unique(MscShipment::class, 'bl_master')->where('bl_house', $blHouse)->ignore($id)],
             'bl_house' => ['nullable', 'string', 'max:255'],
             'factory_id' => ['nullable', 'integer', 'exists:factories,id'],

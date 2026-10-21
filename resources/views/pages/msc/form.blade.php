@@ -20,7 +20,7 @@
         <fieldset wire:loading.attr="disabled" class="grid min-w-0 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <legend class="sr-only">Información MSC</legend>
             <x-forms.input name="no" label="No." :value="$shipmentId ?? 'Se asignará al guardar'" readonly hint="Numeración automática del sistema." />
-            <x-forms.input name="etd" label="ETD *" type="date" wire:model="etd" required />
+            <x-forms.input name="etd" label="ETD" type="date" wire:model="etd" hint="Deja vacío si la fecha de salida no se conoce." />
             <x-forms.input name="eta" label="ETA *" type="date" wire:model="eta" required />
             <x-forms.input name="bl_master" label="BL Master *" wire:model="bl_master" maxlength="255" required />
             <x-forms.input name="bl_house" label="BL House" wire:model="bl_house" maxlength="255" />

@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 /**
- * @property Carbon $etd
+ * @property Carbon|null $etd
  * @property Carbon $eta
  * @property string|null $bl_master
  * @property string|null $bl_house
@@ -63,6 +63,9 @@ class MscShipment extends Model
     protected static function booted(): void
     {
         static::saving(function (self $shipment): void {
+            if (($shipment->getAttributes()['etd'] ?? null) === '') {
+                $shipment->etd = null;
+            }
             foreach (['status' => MscShipmentStatus::Draft, 'status_bl' => MscBillOfLadingStatus::Draft] as $field => $draft) {
                 $value = $shipment->getAttributes()[$field] ?? null;
                 if ($value === null || (is_string($value) && trim($value) === '')) {

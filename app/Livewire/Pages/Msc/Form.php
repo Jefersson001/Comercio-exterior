@@ -155,7 +155,7 @@ class Form extends Component
         $this->initializeMscContext($foreignTrade);
         if ($shipment?->exists) {
             $this->shipmentId = $shipment->id;
-            $this->etd = $shipment->etd->format('Y-m-d');
+            $this->etd = $shipment->etd?->format('Y-m-d') ?? '';
             $this->eta = $shipment->eta->format('Y-m-d');
             $this->bl_master = $shipment->bl_master ?? '';
             $this->bl_house = $shipment->bl_house ?? '';
