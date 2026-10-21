@@ -58,9 +58,9 @@ class DashboardTest extends TestCase
             ->assertViewHas('shipmentStatuses', function ($rows): bool {
                 $counts = array_column($rows, 'count', 'label');
 
-                return array_sum($counts) === 5 && $counts['NAVEGANDO'] === 2 && $counts['Borrador'] === 1 && $counts['Sin estado'] === 1;
+                return array_sum($counts) === 5 && $counts['NAVEGANDO'] === 2 && $counts['Borrador'] === 2;
             })
-            ->assertViewHas('blStatuses', fn ($rows) => array_sum(array_column($rows, 'count')) === 5 && array_column($rows, 'count', 'label')['Sin status BL'] === 2)
+            ->assertViewHas('blStatuses', fn ($rows) => array_sum(array_column($rows, 'count')) === 5 && array_column($rows, 'count', 'label')['Borrador'] === 2)
             ->assertViewHas('shipmentCategories', fn ($rows) => array_column($rows, 'count', 'label') === ['Carro' => 1, 'Moto' => 2, 'Repuestos' => 0, 'Sin categoría' => 2])
             ->assertViewHas('productCategories', fn ($rows) => array_column($rows, 'count', 'label') === ['Carro' => 1, 'Moto' => 1, 'Repuestos' => 0, 'Sin categoría' => 0])
             ->assertSee(route('foreign-trade.msc.index', ['status' => 'NAVEGANDO']), false)

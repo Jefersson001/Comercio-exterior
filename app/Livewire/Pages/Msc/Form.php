@@ -4,6 +4,8 @@ namespace App\Livewire\Pages\Msc;
 
 use App\Actions\Msc\PrepareShipmentProducts;
 use App\Concerns\InteractsWithMscContext;
+use App\Enums\MscBillOfLadingStatus;
+use App\Enums\MscShipmentStatus;
 use App\Models\Category;
 use App\Models\Factory;
 use App\Models\MscShipment;
@@ -54,9 +56,9 @@ class Form extends Component
 
     public string $released = '';
 
-    public string $status = '';
+    public string $status = MscShipmentStatus::Draft->value;
 
-    public string $status_bl = '';
+    public string $status_bl = MscBillOfLadingStatus::Draft->value;
 
     public string $activeForeignTradeTab = 'phase-1';
 
@@ -171,7 +173,7 @@ class Form extends Component
             if ($this->foreignTrade) {
                 $this->category_id = $shipment->category_id;
                 $this->pendingCategoryId = $this->category_id;
-                $this->status_bl = $shipment->status_bl?->value ?? '';
+                $this->status_bl = $shipment->status_bl?->value ?? MscBillOfLadingStatus::Draft->value;
                 $this->exp_number = $shipment->exp_number ?? '';
                 $this->dua_intr = $shipment->dua_intr ?? '';
                 $this->seabridge = $shipment->seabridge ?? '';
@@ -226,7 +228,7 @@ class Form extends Component
             $this->free_time = (string) $shipment->free_time;
             $this->vessel_id = $shipment->vessel_id;
             $this->released = $shipment->released ?? '';
-            $this->status = $shipment->status?->value ?? '';
+            $this->status = $shipment->status?->value ?? MscShipmentStatus::Draft->value;
         }
         if (! $this->unitsQtyOverridden) {
             $this->recalculateUnitsQty();
@@ -475,9 +477,9 @@ class Form extends Component
             }
         }
         $data = $this->validate($rules, attributes: MscFields::labels());
-        $data['status'] = $this->status === '' ? null : $this->status;
+        $data['status'] = $this->status === '' ? MscShipmentStatus::Draft->value : $this->status;
         if ($this->foreignTrade) {
-            $data['status_bl'] = $this->status_bl === '' ? null : $this->status_bl;
+            $data['status_bl'] = $this->status_bl === '' ? MscBillOfLadingStatus::Draft->value : $this->status_bl;
         }
         if ($this->foreignTrade) {
             $data['product_id'] = $prepared['lines'][0]['product_id'];

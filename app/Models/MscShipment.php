@@ -54,7 +54,19 @@ class MscShipment extends Model
     use HasFactory;
 
     /** @var array<string, mixed> */
-    protected $attributes = ['bl_house' => ''];
+    protected $attributes = ['bl_house' => '', 'status' => 'Borrador', 'status_bl' => 'Borrador'];
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $shipment): void {
+            foreach (['status' => MscShipmentStatus::Draft, 'status_bl' => MscBillOfLadingStatus::Draft] as $field => $draft) {
+                $value = $shipment->getAttributes()[$field] ?? null;
+                if ($value === null || (is_string($value) && trim($value) === '')) {
+                    $shipment->setAttribute($field, $draft);
+                }
+            }
+        });
+    }
 
     /** @return array<string, string> */
     protected function casts(): array

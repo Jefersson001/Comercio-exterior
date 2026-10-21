@@ -297,7 +297,7 @@ class ImportMscShipments
             'product_id' => $product['id'],
             'container_qty' => $this->text($raw['container_qty'] ?? null),
             'units_qty' => $unitsQty === '' ? null : $unitsQty,
-            'status' => $status === '' ? null : $status,
+            'status' => $status === '' ? MscShipmentStatus::Draft->value : $status,
             'free_time' => $freeTime,
             'released' => $this->text($raw['released'] ?? null),
         ];

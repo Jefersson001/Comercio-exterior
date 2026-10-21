@@ -329,7 +329,8 @@ class SpreadsheetAuditTest extends TestCase
         $this->assertContains($factory->name, $this->catalogColumn($lists, 'Fábricas'));
         $this->assertContains($vessel->name, $this->catalogColumn($lists, 'Buques'));
         $this->assertContains('REGISTRO', $this->catalogColumn($lists, 'Status del embarque'));
-        $this->assertNotContains('Borrador', $this->catalogColumn($lists, 'Status del embarque'));
+        $this->assertContains('Borrador', $this->catalogColumn($lists, 'Status del embarque'));
+        $this->assertContains('Borrador', $this->catalogColumn($lists, 'Status BL'));
         $this->assertSame([$product->name], $this->dependentOptions($lists, 'Productos por categoría', $category->name));
         $this->assertSame([$other->name], $this->dependentOptions($lists, 'Productos por categoría', $multiple->name));
         $this->assertSame(['Rojo, especial'], $this->dependentOptions($lists, 'Colores por producto', $product->name));

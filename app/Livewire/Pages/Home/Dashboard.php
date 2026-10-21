@@ -61,8 +61,8 @@ class Dashboard extends Component
             'showUsers' => $users,
             'mscRoute' => $mscRoute,
             'shipmentTotal' => $shipmentTotal,
-            'shipmentStatuses' => $this->statusRows($shipmentCounts, MscShipmentStatus::options(), $mscRoute, 'status', 'Sin estado'),
-            'blStatuses' => $this->statusRows($blCounts, MscBillOfLadingStatus::cases(), $mscRoute, 'status_bl', 'Sin status BL'),
+            'shipmentStatuses' => $this->statusRows($shipmentCounts, MscShipmentStatus::options(), $mscRoute, 'status'),
+            'blStatuses' => $this->statusRows($blCounts, MscBillOfLadingStatus::cases(), $mscRoute, 'status_bl'),
             'shipmentCategories' => $exterior ? $shipmentCategoryRows : [],
             'productTotal' => $productTotal,
             'productCategories' => $configuration ? $productCategoryRows : [],
@@ -82,20 +82,18 @@ class Dashboard extends Component
      * @param  list<MscShipmentStatus|MscBillOfLadingStatus>  $options
      * @return list<array{label: string, count: int, href?: string}>
      */
-    private function statusRows(array $counts, array $options, string $route, string $field, string $emptyLabel): array
+    private function statusRows(array $counts, array $options, string $route, string $field): array
     {
+        $counts['Borrador'] = (int) ($counts['Borrador'] ?? 0) + (int) ($counts[''] ?? 0);
+        unset($counts['']);
         $rows = [];
         foreach ($options as $option) {
             $rows[] = ['label' => $option->value, 'count' => (int) ($counts[$option->value] ?? 0), 'href' => route($route, [$field => $option->value])];
             unset($counts[$option->value]);
         }
-        $empty = (int) ($counts[''] ?? 0);
-        unset($counts['']);
         foreach ($counts as $label => $count) {
-            // Keep legacy values visible instead of losing them from the total.
-            $rows[] = ['label' => (string) $label, 'count' => (int) $count, ...($field === 'status' && $label === MscShipmentStatus::Draft->value ? ['href' => route($route, [$field => $label])] : [])];
+            $rows[] = ['label' => (string) $label, 'count' => (int) $count];
         }
-        $rows[] = ['label' => $emptyLabel, 'count' => $empty];
 
         return $rows;
     }

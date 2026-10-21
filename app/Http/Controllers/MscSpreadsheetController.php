@@ -72,6 +72,7 @@ class MscSpreadsheetController extends Controller
                     ['Categoría / TIPO', 'La categoría debe existir en Configuración → Categorías. Los productos de Comercio Exterior deben tener asignada su categoría.'],
                     ['COLORES', 'Solo corresponde a categorías individuales. Usa variantes existentes del producto, por ejemplo: 12 rojo // 5 blanco. Déjala vacía en categorías múltiples.'],
                     ['Fechas', 'Usa el formato AAAA-MM-DD. ETA debe ser igual o posterior a ETD.'],
+                    ['Estados vacíos', 'Si el embarque no tiene estado asignado, se guardará como Borrador. Lo mismo aplica al Status BL. Borrador indica que el seguimiento está pendiente de completar.'],
                     ['Status del embarque', implode(' | ', array_column(MscShipmentStatus::options(), 'value'))],
                     ['Status BL', implode(' | ', array_column(MscBillOfLadingStatus::cases(), 'value'))],
                 ] as $instruction) {

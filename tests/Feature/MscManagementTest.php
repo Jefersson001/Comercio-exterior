@@ -164,7 +164,7 @@ class MscManagementTest extends TestCase
         $shipment = MscShipment::factory()->create(['status' => null]);
 
         Livewire::test(Form::class, ['shipment' => $shipment])
-            ->assertSet('status', '')
+            ->assertSet('status', MscShipmentStatus::Draft->value)
             ->set('status', MscShipmentStatus::Puerto->value)
             ->call('save')
             ->assertHasNoErrors();
@@ -186,7 +186,7 @@ class MscManagementTest extends TestCase
             ->set('status', '')
             ->call('save')
             ->assertHasNoErrors();
-        $this->assertNull($shipment->fresh()->status);
+        $this->assertSame(MscShipmentStatus::Draft, $shipment->fresh()->status);
     }
 
     public function test_shipment_status_options_follow_the_operational_order_in_filters_and_forms(): void
@@ -197,8 +197,8 @@ class MscManagementTest extends TestCase
         foreach (['msc', 'foreign-trade.msc'] as $context) {
             foreach ([route($context.'.index'), route($context.'.edit', $shipment)] as $url) {
                 $this->get($url)->assertOk()
-                    ->assertSeeInOrder(['Status del embarque', 'NAVEGANDO', 'PUERTO', 'REGISTRO', 'IN BOND', 'POR DESPACHO', 'RECEPCION', 'RECONOCIMIENTO'])
-                    ->assertDontSee('Borrador');
+                    ->assertSeeInOrder(['Status del embarque', 'Borrador', 'NAVEGANDO', 'PUERTO', 'REGISTRO', 'IN BOND', 'POR DESPACHO', 'RECEPCION', 'RECONOCIMIENTO'])
+                    ->assertSee('Borrador');
             }
         }
 

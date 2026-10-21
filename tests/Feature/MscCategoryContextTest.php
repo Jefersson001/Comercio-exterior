@@ -500,7 +500,7 @@ class MscCategoryContextTest extends TestCase
         $shipment = $this->foreignShipment();
 
         Livewire::test(Form::class, ['shipment' => $shipment, 'foreignTrade' => true])
-            ->assertSet('status_bl', '')
+            ->assertSet('status_bl', MscBillOfLadingStatus::Draft->value)
             ->set('status_bl', MscBillOfLadingStatus::PendingRelease->value)
             ->call('save')
             ->assertHasNoErrors();
@@ -525,7 +525,7 @@ class MscCategoryContextTest extends TestCase
         $shipment = $this->foreignShipment(['status_bl' => MscBillOfLadingStatus::Released]);
 
         Livewire::test(Form::class, ['shipment' => $shipment])
-            ->assertSet('status_bl', '')
+            ->assertSet('status_bl', MscBillOfLadingStatus::Draft->value)
             ->call('save')
             ->assertHasNoErrors();
         $this->assertSame(MscBillOfLadingStatus::Released, $shipment->fresh()->status_bl);
