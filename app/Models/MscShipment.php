@@ -117,6 +117,12 @@ class MscShipment extends Model
         return $this->hasMany(MscShipmentProductVariant::class)->orderBy('id');
     }
 
+    /** @return HasMany<MscShipmentDocument, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(MscShipmentDocument::class)->orderByDesc('id');
+    }
+
     public function totalUnits(): ?int
     {
         if ($this->productLines->isNotEmpty()) {

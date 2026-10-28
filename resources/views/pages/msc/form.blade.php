@@ -67,7 +67,7 @@
         @if($foreignTrade)
             <div data-foreign-trade-notebook class="mt-8 min-w-0 rounded-2xl border border-slate-200 dark:border-white/10">
                 <div role="tablist" aria-label="Fases del comercio exterior" class="flex overflow-x-auto border-b border-slate-200 bg-slate-50 px-3 dark:border-white/10 dark:bg-white/5">
-                    @foreach(['phase-1' => 'Fase 1', 'phase-2' => 'Fase 2', 'phase-3' => 'Fase 3', 'notes' => 'Notas'] as $tab => $label)
+                    @foreach(['phase-1' => 'Fase 1', 'phase-2' => 'Fase 2', 'phase-3' => 'Fase 3', 'documents' => 'Documentos', 'notes' => 'Notas'] as $tab => $label)
                         <button
                             type="button"
                             id="foreign-trade-tab-{{ $tab }}"
@@ -206,6 +206,161 @@
                                     <x-forms.input name="sencamer_receipt_date" label="FECHA RECEPCION DE SENCAMER" type="date" wire:model="sencamer_receipt_date" />
                                     <x-forms.input name="comex_request_date" label="FECHA SOLICITUD DE COMEX" type="date" wire:model="comex_request_date" />
                                     <x-forms.input name="comex_receipt_date" label="FECHA RECEPCION DE COMEX" type="date" wire:model="comex_receipt_date" />
+                                </div>
+                            @elseif($activeForeignTradeTab === 'documents')
+                                <div class="min-w-0 space-y-6">
+                                    @if(session('document_status'))
+                                        <div role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300">
+                                            {{ session('document_status') }}
+                                        </div>
+                                    @endif
+
+                                    <div class="rounded-2xl border border-[color:var(--line)] bg-[var(--surface-soft)] p-5">
+                                        <div class="mb-4">
+                                            <h4 class="text-sm font-semibold text-[color:var(--ink)]">Adjuntar nuevo documento</h4>
+                                            <p class="text-xs text-[color:var(--muted)]">Sube archivos PDF, imágenes o documentos de oficina (máx. 20 MB). Puedes agregar más documentos en cualquier momento.</p>
+                                        </div>
+
+                                        <div class="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+                                            <div class="min-w-0">
+                                                <label for="new_document_file" class="mb-2 block text-sm font-medium text-[color:var(--ink)]">Archivo *</label>
+                                                <input
+                                                    id="new_document_file"
+                                                    type="file"
+                                                    wire:model="newDocumentFile"
+                                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
+                                                    class="block w-full border-0! bg-transparent! p-0! text-sm file:transition hover:file:bg-[var(--brand-soft)]"
+                                                />
+                                                <div wire:loading wire:target="newDocumentFile" class="mt-1 text-xs text-[color:var(--brand)]">
+                                                    Cargando archivo...
+                                                </div>
+                                                @error('newDocumentFile')
+                                                    <p role="alert" class="mt-1.5 text-sm text-rose-600 dark:text-rose-300">{{ $message }}</p>
+                                                @enderror
+                                            </div>
+
+                                            <div class="flex items-end">
+                                                <button
+                                                    type="button"
+                                                    wire:click="uploadDocument"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="uploadDocument, newDocumentFile"
+                                                    class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition disabled:opacity-60"
+                                                >
+                                                    <svg class="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                                    </svg>
+                                                    <span wire:loading.remove wire:target="uploadDocument">Adjuntar documento</span>
+                                                    <span wire:loading wire:target="uploadDocument">Guardando...</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="mb-4 flex items-center justify-between">
+                                            <h4 class="text-sm font-semibold uppercase tracking-wider text-[color:var(--ink)]">
+                                                Documentos del embarque ({{ $documents->count() + count($pendingDocuments) }})
+                                            </h4>
+                                        </div>
+
+                                        @if($documents->isEmpty() && count($pendingDocuments) === 0)
+                                            <div class="rounded-2xl border border-dashed border-[color:var(--line)] p-8 text-center">
+                                                <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-[var(--surface-soft)] text-[color:var(--muted)]">
+                                                    <svg class="size-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                                    </svg>
+                                                </div>
+                                                <h5 class="mt-3 text-sm font-semibold text-[color:var(--ink)]">No hay documentos registrados</h5>
+                                                <p class="mt-1 text-sm text-[color:var(--muted)]">Puedes adjuntar facturas, copias de BL, notas y certificados arriba para mantener el expediente al día.</p>
+                                            </div>
+                                        @else
+                                            <div class="divide-y divide-[color:var(--line)] overflow-hidden rounded-2xl border border-[color:var(--line)] bg-[var(--surface)]">
+                                                @foreach($pendingDocuments as $pending)
+                                                    <div wire:key="pending-doc-{{ $pending['temp_id'] }}" class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between bg-amber-50/40 dark:bg-amber-500/5">
+                                                        <div class="flex items-center gap-3 min-w-0">
+                                                            <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
+                                                                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                </svg>
+                                                            </div>
+                                                            <div class="min-w-0">
+                                                                <div class="flex items-center gap-2">
+                                                                    <span class="truncate text-sm font-semibold text-[color:var(--ink)]">{{ $pending['name'] }}</span>
+                                                                    <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-500/20 dark:text-amber-300">Pendiente de guardar</span>
+                                                                </div>
+                                                                <p class="truncate text-xs text-[color:var(--muted)]">{{ $pending['original_name'] }} • {{ number_format($pending['file_size'] / 1024, 1) }} KB</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            wire:click="removePendingDocument('{{ $pending['temp_id'] }}')"
+                                                            wire:loading.attr="disabled"
+                                                            title="Quitar de la lista"
+                                                            class="inline-flex items-center gap-1.5 self-end rounded-lg px-3 py-1.5 text-xs font-semibold text-[color:var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))] sm:self-auto"
+                                                        >
+                                                            <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                            Quitar
+                                                        </button>
+                                                    </div>
+                                                @endforeach
+
+                                                @foreach($documents as $doc)
+                                                    <div wire:key="saved-doc-{{ $doc->id }}" class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between hover:bg-[var(--hover)]">
+                                                        <div class="flex items-center gap-3 min-w-0">
+                                                            <div @class([
+'flex size-10 shrink-0 items-center justify-center rounded-xl',
+'bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400' => in_array($doc->extension(), ['pdf']),
+'bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400' => in_array($doc->extension(), ['xls','xlsx','csv']),
+'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' => in_array($doc->extension(), ['doc','docx','txt']),
+'bg-violet-100 text-violet-600 dark:bg-violet-500/20 dark:text-violet-400' => in_array($doc->extension(), ['jpg','jpeg','png','webp']),
+'bg-[var(--surface-soft)] text-[color:var(--muted)]' => !in_array($doc->extension(), ['pdf','xls','xlsx','csv','doc','docx','txt','jpg','jpeg','png','webp']),
+                                                            ])>
+                                                                <svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                                                </svg>
+                                                            </div>
+                                                            <div class="min-w-0">
+                                                                <p class="truncate text-sm font-semibold text-[color:var(--ink)]">{{ $doc->name }}</p>
+                                                                <p class="truncate text-xs text-[color:var(--muted)]">
+                                                                    {{ $doc->original_name }} • {{ $doc->formattedSize() }} • {{ $doc->created_at->format('d/m/Y H:i') }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="flex items-center gap-2 self-end sm:self-auto">
+                                                            <button
+                                                                type="button"
+                                                                wire:click="downloadDocument({{ $doc->id }})"
+                                                                wire:loading.attr="disabled"
+                                                                title="Descargar documento"
+                                                                class="inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--line)] bg-[var(--surface)] px-3 py-1.5 text-xs font-semibold text-[color:var(--ink)] shadow-sm transition hover:bg-[var(--hover)]"
+                                                            >
+                                                                <svg class="size-4 text-[color:var(--muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                                                                </svg>
+                                                                Descargar
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                wire:click="deleteDocument({{ $doc->id }})"
+                                                                wire:confirm="¿Seguro que deseas eliminar este documento? Esta acción no se puede deshacer."
+                                                                wire:loading.attr="disabled"
+                                                                title="Eliminar documento"
+                                                                class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[color:var(--danger)] transition hover:bg-[color-mix(in_srgb,var(--danger)_10%,var(--surface))]"
+                                                            >
+                                                                <svg class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                </svg>
+                                                                <span class="sr-only">Eliminar</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </div>
                                 </div>
                             @elseif($activeForeignTradeTab === 'notes')
                                 <div class="grid min-w-0 gap-5 sm:grid-cols-2">

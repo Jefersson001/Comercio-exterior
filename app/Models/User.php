@@ -65,6 +65,7 @@ class User extends Authenticatable implements PasskeyUser
         return [
             'role' => UserRole::class,
             'is_active' => 'boolean',
+            'msc_arrival_notice_days' => 'integer',
             'access_international_trade' => 'boolean',
             'access_foreign_trade' => 'boolean',
             'access_configuration' => 'boolean',

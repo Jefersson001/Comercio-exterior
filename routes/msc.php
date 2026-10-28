@@ -24,4 +24,5 @@ Route::middleware(['auth', 'can:access-foreign-trade'])->prefix('comercio-exteri
     Route::get('reporte-control-carga-directo', [MscSpreadsheetController::class, 'exportDirect'])->name('export-direct');
     Route::get('plantilla', [MscSpreadsheetController::class, 'template'])->name('template');
     Route::get('{shipment}/editar', Form::class)->defaults('foreignTrade', true)->name('edit');
+    Route::get('{shipment}/documentos/{document}/descargar', [\App\Http\Controllers\MscDocumentController::class, 'download'])->name('documents.download');
 });

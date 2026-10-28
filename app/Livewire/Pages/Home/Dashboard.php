@@ -11,11 +11,30 @@ use App\Models\Product;
 use App\Models\User;
 use App\Models\Vessel;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class Dashboard extends Component
 {
+    use WithPagination;
+
+    public mixed $arrivalDays = 10;
+
+    public function mount(): void
+    {
+        $this->arrivalDays = auth()->user()->msc_arrival_notice_days ?? 10;
+    }
+
+    public function updatedArrivalDays(): void
+    {
+        Gate::authorize('manage-msc');
+        $this->validate(['arrivalDays' => ['required', 'integer', 'min:0', 'max:365']]);
+        auth()->user()->forceFill(['msc_arrival_notice_days' => (int) $this->arrivalDays])->saveQuietly();
+        $this->resetPage('upcomingPage');
+    }
+
     public function boot(): void
     {
         abort_unless(auth()->user()?->is_active, 403);
@@ -28,6 +47,16 @@ class Dashboard extends Component
         $configuration = Gate::allows('manage-configuration');
         $users = Gate::allows('manage-users');
         $mscRoute = $exterior ? 'foreign-trade.msc.index' : 'msc.index';
+        $today = Carbon::today('America/Caracas');
+        $noticeDays = (int) (auth()->user()->msc_arrival_notice_days ?? 10);
+        $arrivalQuery = MscShipment::query()->with('vessel:id,name');
+        $upcomingArrivals = $trade ? (clone $arrivalQuery)
+            ->whereDate('eta', '>=', $today->toDateString())
+            ->whereDate('eta', '<=', $today->copy()->addDays($noticeDays)->toDateString())
+            ->orderBy('eta')->orderBy('id')->paginate(10, ['*'], 'upcomingPage') : null;
+        $arrivedShipments = $trade ? (clone $arrivalQuery)
+            ->whereDate('eta', '<', $today->toDateString())
+            ->orderByDesc('eta')->orderByDesc('id')->paginate(10, ['*'], 'arrivedPage') : null;
 
         $shipmentCounts = $trade ? MscShipment::query()->toBase()->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total', 'status')->all() : [];
         $blCounts = $exterior ? MscShipment::query()->toBase()->selectRaw('status_bl, COUNT(*) AS total')->groupBy('status_bl')->pluck('total', 'status_bl')->all() : [];
@@ -56,6 +85,11 @@ class Dashboard extends Component
         return view('pages.home.index', [
             'hasOverview' => $trade || $configuration || $users,
             'showTrade' => $trade,
+            'arrivalToday' => $today,
+            'arrivalNoticeDays' => $noticeDays,
+            'upcomingArrivals' => $upcomingArrivals,
+            'arrivedShipments' => $arrivedShipments,
+            'shipmentEditRoute' => $exterior ? 'foreign-trade.msc.edit' : 'msc.edit',
             'showExterior' => $exterior,
             'showConfiguration' => $configuration,
             'showUsers' => $users,

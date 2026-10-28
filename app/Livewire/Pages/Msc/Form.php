@@ -14,17 +14,23 @@ use App\Models\MscShipmentProductVariant;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Vessel;
+use App\Models\MscShipmentDocument;
 use App\Support\HistoryRecorder;
 use App\Support\MscFields;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\WithFileUploads;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class Form extends Component
 {
     use InteractsWithMscContext;
+    use WithFileUploads;
 
     #[Locked]
     public ?int $shipmentId = null;
@@ -132,6 +138,13 @@ class Form extends Component
 
     /** @var array<int, array{product_id: int|string|null, container_qty: int|string|null, units_qty: int|string|null}> */
     public array $productLines = [];
+
+    public mixed $newDocumentFile = null;
+
+    public string $newDocumentName = '';
+
+    /** @var array<int, array{temp_id: string, name: string, original_name: string, file_size: int, mime_type: ?string, file: mixed}> */
+    public array $pendingDocuments = [];
 
     /** @var array<int, bool> */
     #[Locked]
@@ -352,9 +365,93 @@ class Form extends Component
 
     public function selectForeignTradeTab(string $tab): void
     {
-        abort_unless(in_array($tab, ['phase-1', 'phase-2', 'phase-3', 'notes'], true), 404);
+        abort_unless(in_array($tab, ['phase-1', 'phase-2', 'phase-3', 'documents', 'notes'], true), 404);
 
         $this->activeForeignTradeTab = $tab;
+    }
+
+    public function uploadDocument(): void
+    {
+        abort_unless($this->foreignTrade, 404);
+        $this->authorizeMscContext();
+
+        $this->validate([
+            'newDocumentFile' => ['required', 'file', 'max:20480'],
+            'newDocumentName' => ['nullable', 'string', 'max:255'],
+        ], [
+            'newDocumentFile.required' => 'Selecciona un archivo para adjuntar.',
+            'newDocumentFile.file' => 'El archivo no es válido.',
+            'newDocumentFile.max' => 'El archivo no debe exceder los 20 MB.',
+        ]);
+
+        $originalName = $this->newDocumentFile->getClientOriginalName();
+        $name = trim($this->newDocumentName) !== '' ? trim($this->newDocumentName) : $originalName;
+        $size = (int) $this->newDocumentFile->getSize();
+        $mime = $this->newDocumentFile->getMimeType();
+
+        if ($this->shipmentId !== null) {
+            $path = $this->newDocumentFile->store("msc-documents/{$this->shipmentId}", 'local');
+            MscShipmentDocument::create([
+                'msc_shipment_id' => $this->shipmentId,
+                'name' => $name,
+                'file_path' => $path,
+                'original_name' => $originalName,
+                'mime_type' => $mime,
+                'file_size' => $size,
+            ]);
+            $this->reset(['newDocumentFile', 'newDocumentName']);
+            session()->flash('document_status', 'Documento guardado correctamente.');
+        } else {
+            $this->pendingDocuments[] = [
+                'temp_id' => (string) Str::uuid(),
+                'name' => $name,
+                'original_name' => $originalName,
+                'file_size' => $size,
+                'mime_type' => $mime,
+                'file' => $this->newDocumentFile,
+            ];
+            $this->reset(['newDocumentFile', 'newDocumentName']);
+            session()->flash('document_status', 'Documento agregado a la lista pendiente.');
+        }
+    }
+
+    public function deleteDocument(int $documentId): void
+    {
+        abort_unless($this->foreignTrade, 404);
+        $this->authorizeMscContext();
+        abort_unless($this->shipmentId, 404);
+
+        $document = MscShipmentDocument::where('msc_shipment_id', $this->shipmentId)->findOrFail($documentId);
+        if (Storage::disk('local')->exists($document->file_path)) {
+            Storage::disk('local')->delete($document->file_path);
+        }
+        $document->delete();
+
+        session()->flash('document_status', 'Documento eliminado correctamente.');
+    }
+
+    public function removePendingDocument(string $tempId): void
+    {
+        abort_unless($this->foreignTrade, 404);
+
+        $this->pendingDocuments = array_values(array_filter(
+            $this->pendingDocuments,
+            fn (array $item): bool => ($item['temp_id'] ?? '') !== $tempId
+        ));
+
+        session()->flash('document_status', 'Documento pendiente removido.');
+    }
+
+    public function downloadDocument(int $documentId): StreamedResponse
+    {
+        abort_unless($this->foreignTrade, 404);
+        $this->authorizeMscContext();
+        abort_unless($this->shipmentId, 404);
+
+        $document = MscShipmentDocument::where('msc_shipment_id', $this->shipmentId)->findOrFail($documentId);
+        abort_unless(Storage::disk('local')->exists($document->file_path), 404);
+
+        return Storage::disk('local')->download($document->file_path, $document->original_name);
     }
 
     public function addContainerLine(): void
@@ -548,6 +645,36 @@ class Form extends Component
 
             return $shipment;
         });
+
+        if ($this->foreignTrade) {
+            foreach ($this->pendingDocuments as $pending) {
+                if (isset($pending['file'])) {
+                    $path = $pending['file']->store("msc-documents/{$shipment->id}", 'local');
+                    $shipment->documents()->create([
+                        'name' => $pending['name'],
+                        'file_path' => $path,
+                        'original_name' => $pending['original_name'],
+                        'mime_type' => $pending['mime_type'],
+                        'file_size' => $pending['file_size'],
+                    ]);
+                }
+            }
+            if ($this->newDocumentFile) {
+                $orig = $this->newDocumentFile->getClientOriginalName();
+                $name = trim($this->newDocumentName) !== '' ? trim($this->newDocumentName) : $orig;
+                $path = $this->newDocumentFile->store("msc-documents/{$shipment->id}", 'local');
+                $shipment->documents()->create([
+                    'name' => $name,
+                    'file_path' => $path,
+                    'original_name' => $orig,
+                    'mime_type' => $this->newDocumentFile->getMimeType(),
+                    'file_size' => (int) $this->newDocumentFile->getSize(),
+                ]);
+            }
+            $this->pendingDocuments = [];
+            $this->reset(['newDocumentFile', 'newDocumentName']);
+        }
+
         session()->flash('status', 'Registro MSC No. '.$shipment->id.' guardado correctamente.');
         if ($this->shipmentId === null) {
             $this->redirect($this->mscRoute('index'));
@@ -560,6 +687,7 @@ class Form extends Component
     {
         $this->authorizeMscContext();
         abort_if($this->shipmentId === null, 404);
+        Storage::disk('local')->deleteDirectory("msc-documents/{$this->shipmentId}");
         MscShipment::findOrFail($this->shipmentId)->delete();
         session()->flash('status', 'Registro MSC eliminado correctamente.');
         $this->redirect($this->mscRoute('index'));
@@ -598,6 +726,7 @@ class Form extends Component
             'vessels' => Vessel::orderBy('name')->get(),
             'categories' => $this->foreignTrade ? Category::orderBy('name')->get() : collect(),
             'productVariants' => $this->foreignTrade && $this->variantsEnabled() ? ProductVariant::with('product')->whereIn('product_id', $selectedIds)->get() : collect(),
+            'documents' => ($this->foreignTrade && $this->shipmentId) ? MscShipmentDocument::where('msc_shipment_id', $this->shipmentId)->orderByDesc('id')->get() : collect(),
         ])
             ->layout('layouts.dashboard', ['title' => $title, 'heading' => $title]);
     }

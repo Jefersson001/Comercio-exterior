@@ -13,12 +13,59 @@ use App\Models\User;
 use App\Models\Vessel;
 use App\UserRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_eta_notice_includes_boundary_and_keeps_shipment_until_arrival(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => UserRole::Administrator]));
+        $this->travelTo(Carbon::parse('2026-10-19 12:00', 'America/Caracas'));
+        $shipment = MscShipment::factory()->create(['eta' => '2026-10-30', 'status' => MscShipmentStatus::Navegando]);
+        $dashboard = Livewire::test(Dashboard::class)
+            ->assertViewHas('upcomingArrivals', fn ($rows) => $rows->total() === 0);
+
+        foreach (['2026-10-20' => 'Faltan 10 días', '2026-10-25' => 'Faltan 5 días', '2026-10-30' => 'Llega hoy'] as $date => $label) {
+            $this->travelTo(Carbon::parse($date.' 12:00', 'America/Caracas'));
+            $dashboard->call('$refresh')->assertSee($label)
+                ->assertViewHas('upcomingArrivals', fn ($rows) => $rows->total() === 1 && $rows->first()->is($shipment));
+        }
+        // UTC is already October 31, but Venezuela is still on October 30.
+        $this->travelTo(Carbon::parse('2026-10-31 02:00', 'UTC'));
+        $dashboard->call('$refresh')->assertSee('Llega hoy');
+        $this->travelTo(Carbon::parse('2026-10-31 04:00', 'UTC'));
+        $dashboard->call('$refresh')->assertSee('Embarque llegado')
+            ->assertViewHas('upcomingArrivals', fn ($rows) => $rows->total() === 0)
+            ->assertViewHas('arrivedShipments', fn ($rows) => $rows->total() === 1);
+        $this->assertSame(MscShipmentStatus::Navegando, $shipment->fresh()->status);
+    }
+
+    public function test_eta_notice_days_autosave_per_user_and_reject_invalid_values(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        $dashboard = Livewire::test(Dashboard::class)->set('arrivalDays', 20)->assertHasNoErrors();
+        $this->assertSame(20, $user->fresh()->msc_arrival_notice_days);
+        Livewire::test(Dashboard::class)->assertSet('arrivalDays', 20);
+        foreach ([-1, 366, '', 'abc', 1.5] as $invalid) {
+            $dashboard->set('arrivalDays', $invalid)->assertHasErrors('arrivalDays');
+            $this->assertSame(20, $user->fresh()->msc_arrival_notice_days);
+        }
+        $dashboard->set('arrivalDays', 0)->assertHasNoErrors();
+        $this->actingAs(User::factory()->create());
+        Livewire::test(Dashboard::class)->assertSet('arrivalDays', 10);
+    }
+
+    public function test_eta_statistics_require_shipment_access(): void
+    {
+        $this->actingAs(User::factory()->create(['access_international_trade' => false, 'access_foreign_trade' => false]));
+        Livewire::test(Dashboard::class)->assertDontSee('Próximos embarques en llegar')
+            ->assertViewHas('upcomingArrivals', null)->set('arrivalDays', 15)->assertForbidden();
+    }
 
     public function test_dashboard_counts_unique_shipments_catalogs_and_unassigned_records(): void
     {
